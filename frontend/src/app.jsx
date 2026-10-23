@@ -11,10 +11,7 @@ export default function App() {
       {/* Everything inside needs a logged-in user */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        {/* F3 to F6 add: /projects, /projects/:id, /tasks/:id, /profile */}
       </Route>
-
-      {/* F6 adds the admin-only /users page inside <ProtectedRoute roles={['admin']} /> */}
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
