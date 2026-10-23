@@ -417,7 +417,7 @@ export default function TaskDetail() {
             </div>
 
             {/* COMMENTS LIST */}
-            <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
               {isCommentsLoading ? (
                 <div className="text-xs font-mono text-[#737373]">LOADING COMMS...</div>
               ) : comments.length === 0 ? (
@@ -425,49 +425,177 @@ export default function TaskDetail() {
                   NO ACTIVITY LOGGED. POST THE FIRST UPDATE.
                 </div>
               ) : (
-                comments.map((c) => (
-                  <div
-                    key={c._id}
-                    className="border border-[#0A0A0A] bg-[#FAF9F5] p-3 text-xs font-mono"
-                  >
-                    <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-1.5 mb-2 text-[10px]">
-                      <span className="font-bold text-[#0A0A0A]">
-                        {c.author?.name || "OPERATIVE"}
-                      </span>
-                      <div className="flex items-center gap-2 text-[#737373]">
-                        <span>{new Date(c.createdAt).toLocaleDateString()}</span>
-                        {(c.author?._id === user?._id || user?.role === "admin") && (
-                          <button
-                            onClick={() => deleteCommentMutation.mutate(c._id)}
-                            className="text-[#EF4444] hover:text-black"
-                            title="Delete comment"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
+                comments.map((c) => {
+                  const cat = c.category || "general";
+                  const borderClass =
+                    cat === "admin_instruction"
+                      ? "border-l-4 border-l-[#EF4444] bg-[#FFF5F5]"
+                      : cat === "pm_directive"
+                      ? "border-l-4 border-l-[#C6FF3D] bg-[#FAFFF2]"
+                      : cat === "progress_update"
+                      ? "border-l-4 border-l-[#10B981] bg-[#F4FFF8]"
+                      : cat === "blocker"
+                      ? "border-l-4 border-l-[#F59E0B] bg-[#FFFBEB]"
+                      : "border border-[#0A0A0A] bg-[#FAF9F5]";
+
+                  return (
+                    <div
+                      key={c._id}
+                      className={`border border-[#0A0A0A] p-3 text-xs font-mono ${borderClass}`}
+                    >
+                      <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-1.5 mb-2 text-[10px]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-[#0A0A0A]">
+                            {c.author?.name || "OPERATIVE"}
+                          </span>
+                          <span className="text-[9px] px-1 border border-black uppercase bg-white">
+                            {c.author?.role?.replace("_", " ") || "MEMBER"}
+                          </span>
+
+                          {cat === "admin_instruction" && (
+                            <span className="bg-[#EF4444] text-white px-1.5 py-0.2 text-[8px] font-bold uppercase border border-black">
+                              🔴 ADMIN DIRECTIVE
+                            </span>
+                          )}
+                          {cat === "pm_directive" && (
+                            <span className="bg-[#0A0A0A] text-[#C6FF3D] px-1.5 py-0.2 text-[8px] font-bold uppercase border border-black">
+                              📋 PM DIRECTIVE
+                            </span>
+                          )}
+                          {cat === "progress_update" && (
+                            <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1.5 py-0.2 text-[8px] font-bold uppercase border border-black">
+                              ⚡ PROGRESS UPDATE
+                            </span>
+                          )}
+                          {cat === "blocker" && (
+                            <span className="bg-[#F59E0B] text-black px-1.5 py-0.2 text-[8px] font-bold uppercase border border-black">
+                              ⚠️ BLOCKER
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-[#737373]">
+                          <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                          {(c.author?._id === user?._id || user?.role === "admin") && (
+                            <button
+                              onClick={() => deleteCommentMutation.mutate(c._id)}
+                              className="text-[#EF4444] hover:text-black"
+                              title="Delete comment"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      <p className="text-[#0A0A0A] whitespace-pre-wrap">{c.body || c.text}</p>
                     </div>
-                    <p className="text-[#0A0A0A] whitespace-pre-wrap">{c.body || c.text}</p>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
 
-          {/* POST COMMENT FORM */}
+          {/* POST COMMENT FORM WITH CATEGORY TABS */}
           {myRole !== "viewer" ? (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (commentText.trim()) postCommentMutation.mutate(commentText.trim());
+                if (commentText.trim()) {
+                  postCommentMutation.mutate({
+                    body: commentText.trim(),
+                    category: commentCategory,
+                  });
+                }
               }}
               className="mt-6 pt-4 border-t border-[#0A0A0A]"
             >
+              {/* Category selector pills */}
+              <div className="mb-2">
+                <span className="text-[10px] font-mono text-[#737373] uppercase font-bold block mb-1">
+                  UPDATE CATEGORY:
+                </span>
+                <div className="flex gap-1.5 flex-wrap">
+                  {user?.role === "admin" && (
+                    <button
+                      type="button"
+                      onClick={() => setCommentCategory("admin_instruction")}
+                      className={`text-[10px] font-mono px-2 py-0.5 border border-black uppercase font-bold transition-all ${
+                        commentCategory === "admin_instruction"
+                          ? "bg-[#EF4444] text-white shadow-[2px_2px_0px_0px_#0A0A0A]"
+                          : "bg-white text-black hover:bg-[#FAF9F5]"
+                      }`}
+                    >
+                      🔴 ADMIN DIRECTIVE
+                    </button>
+                  )}
+
+                  {(myRole === "project_manager" || user?.role === "admin") && (
+                    <button
+                      type="button"
+                      onClick={() => setCommentCategory("pm_directive")}
+                      className={`text-[10px] font-mono px-2 py-0.5 border border-black uppercase font-bold transition-all ${
+                        commentCategory === "pm_directive"
+                          ? "bg-[#0A0A0A] text-[#C6FF3D] shadow-[2px_2px_0px_0px_#0A0A0A]"
+                          : "bg-white text-black hover:bg-[#FAF9F5]"
+                      }`}
+                    >
+                      📋 PM GUIDANCE
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setCommentCategory("progress_update")}
+                    className={`text-[10px] font-mono px-2 py-0.5 border border-black uppercase font-bold transition-all ${
+                      commentCategory === "progress_update"
+                        ? "bg-[#C6FF3D] text-[#0A0A0A] shadow-[2px_2px_0px_0px_#0A0A0A]"
+                        : "bg-white text-black hover:bg-[#F5F5F2]"
+                    }`}
+                  >
+                    ⚡ PROGRESS UPDATE
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCommentCategory("blocker")}
+                    className={`text-[10px] font-mono px-2 py-0.5 border border-black uppercase font-bold transition-all ${
+                      commentCategory === "blocker"
+                        ? "bg-[#F59E0B] text-black shadow-[2px_2px_0px_0px_#0A0A0A]"
+                        : "bg-white text-black hover:bg-[#FAF9F5]"
+                    }`}
+                  >
+                    ⚠️ BLOCKER
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCommentCategory("general")}
+                    className={`text-[10px] font-mono px-2 py-0.5 border border-black uppercase font-bold transition-all ${
+                      commentCategory === "general"
+                        ? "bg-[#0A0A0A] text-white shadow-[2px_2px_0px_0px_#0A0A0A]"
+                        : "bg-white text-black hover:bg-[#FAF9F5]"
+                    }`}
+                  >
+                    💬 NOTE
+                  </button>
+                </div>
+              </div>
+
               <textarea
                 rows={3}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Post progress update or blocker..."
+                placeholder={
+                  commentCategory === "progress_update"
+                    ? "Log progress update on this task for the Project Manager..."
+                    : commentCategory === "blocker"
+                    ? "Report active impediments or blocker details..."
+                    : commentCategory === "admin_instruction"
+                    ? "Issue leadership directives to the Project Manager and team..."
+                    : commentCategory === "pm_directive"
+                    ? "Provide task instructions or acceptance criteria for the operative..."
+                    : "Post comment note..."
+                }
                 className="w-full border border-black p-2 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
               />
               <button
@@ -476,7 +604,17 @@ export default function TaskDetail() {
                 className="mt-2 w-full border border-black bg-[#0A0A0A] text-white py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 <Send className="h-3.5 w-3.5" />
-                <span>POST UPDATE</span>
+                <span>
+                  {commentCategory === "progress_update"
+                    ? "SUBMIT PROGRESS UPDATE"
+                    : commentCategory === "blocker"
+                    ? "SUBMIT BLOCKER REPORT"
+                    : commentCategory === "admin_instruction"
+                    ? "ISSUE ADMIN DIRECTIVE"
+                    : commentCategory === "pm_directive"
+                    ? "ISSUE PM GUIDANCE"
+                    : "POST NOTE"}
+                </span>
               </button>
             </form>
           ) : (
