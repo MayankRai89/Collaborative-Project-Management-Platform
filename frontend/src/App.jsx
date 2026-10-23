@@ -8,6 +8,7 @@ import ProjectList from "./pages/projects/ProjectList";
 import ProjectLayout from "./pages/projects/ProjectLayout";
 import ProjectTasks from "./pages/projects/ProjectTasks";
 import ProjectTeam from "./pages/projects/ProjectTeam";
+import ProjectUpdates from "./pages/projects/ProjectUpdates";
 import TaskDetail from "./pages/tasks/TaskDetail";
 import MyTasks from "./pages/tasks/MyTasks";
 
@@ -29,6 +30,7 @@ export default function App() {
           <Route index element={<ProjectTasks />} />
           <Route path="tasks" element={<ProjectTasks />} />
           <Route path="team" element={<ProjectTeam />} />
+          <Route path="updates" element={<ProjectUpdates />} />
         </Route>
 
         <Route path="/tasks/:id" element={<TaskDetail />} />
