@@ -9,7 +9,7 @@ exports.listComments = async (req, res, next) => {
 
     const [data, total] = await Promise.all([
       Comment.find(filter)
-        .populate("author", "name email")
+        .populate("author", "name email role")
         .sort({ createdAt: 1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -28,7 +28,7 @@ exports.listComments = async (req, res, next) => {
   }
 };
 
-// POST /api/tasks/:id/comments   body: { body }
+// POST /api/tasks/:id/comments   body: { body, category }
 exports.createComment = async (req, res, next) => {
   try {
     if (req.project.status === "archived") {
@@ -39,7 +39,7 @@ exports.createComment = async (req, res, next) => {
         });
     }
 
-    const { body } = req.body;
+    const { body, category: reqCategory } = req.body;
     if (typeof body !== "string" || !body.trim()) {
       return res.status(400).json({ message: "Comment body is required" });
     }
@@ -49,13 +49,36 @@ exports.createComment = async (req, res, next) => {
         .json({ message: "Comment must be 1000 characters or fewer" });
     }
 
+    const validCategories = [
+      "general",
+      "progress_update",
+      "blocker",
+      "pm_directive",
+      "admin_instruction",
+    ];
+
+    let category = "general";
+    if (reqCategory && validCategories.includes(reqCategory)) {
+      category = reqCategory;
+    } else {
+      // Smart default based on sender identity
+      if (req.user.role === "admin") {
+        category = "admin_instruction";
+      } else if (req.projectRole === "project_manager") {
+        category = "pm_directive";
+      } else if (req.task.assignee && req.task.assignee.equals(req.user._id)) {
+        category = "progress_update";
+      }
+    }
+
     const comment = await Comment.create({
       task: req.task._id,
       project: req.project._id,
       author: req.user._id,
-      body,
+      body: body.trim(),
+      category,
     });
-    await comment.populate("author", "name email");
+    await comment.populate("author", "name email role");
 
     res.status(201).json({ comment });
   } catch (err) {

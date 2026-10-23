@@ -177,7 +177,7 @@ exports.updateProject = async (req, res, next) => {
         });
     }
 
-    ["name", "description"].forEach((field) => {
+    ["name", "description", "adminNotes"].forEach((field) => {
       if (req.body[field] !== undefined) req.project[field] = req.body[field];
     });
 

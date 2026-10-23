@@ -15,6 +15,17 @@ const commentSchema = new mongoose.Schema(
       required: true,
     },
     body: { type: String, required: true, trim: true, maxlength: 1000 },
+    category: {
+      type: String,
+      enum: [
+        "general",
+        "progress_update",
+        "blocker",
+        "pm_directive",
+        "admin_instruction",
+      ],
+      default: "general",
+    },
   },
   { timestamps: true },
 );
