@@ -1,7 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --color-brand-black: #0A0A0A;
+  --color-brand-dark: #121212;
+  --color-brand-surface: #181818;
+  --color-brand-offwhite: #F5F5F2;
+  --color-brand-card: #FFFFFF;
+  --color-brand-border: #E5E5E0;
+  --color-brand-border-dark: #282828;
+  --color-brand-muted: #737373;
+  --color-brand-lime: #C6FF3D;
+  --color-brand-lime-hover: #B0EB26;
+  --color-brand-danger: #EF4444;
+  --color-brand-warning: #F59E0B;
+
+  --font-display: 'Bebas Neue', 'Oswald', sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --bg-primary: #F5F5F2;
+  --bg-sidebar: #0A0A0A;
+  --text-primary: #0A0A0A;
+  --text-muted: #737373;
+  --accent-lime: #C6FF3D;
+  --border-subtle: #E5E5E0;
+}
+
 body {
-    margin: 0;
-    background: #f8fafc;
-    color: #0f172a;
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Streetwear sharp edges and hard contrast */
+* {
+  border-radius: 0px !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+}
+::-webkit-scrollbar-thumb {
+  background: #262626;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C6FF3D;
 }
