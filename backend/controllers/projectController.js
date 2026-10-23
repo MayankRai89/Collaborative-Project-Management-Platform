@@ -24,12 +24,16 @@ exports.listProjects = async (req, res, next) => {
     let roleByProject = null;
 
     if (req.user.role !== "admin") {
-      // Non-admins only see projects they belong to
+      // Non-admins see projects where they are a member OR the assigned manager
       const memberships = await ProjectMember.find({ user: req.user._id });
+      const memberProjectIds = memberships.map((m) => m.project);
       roleByProject = new Map(
         memberships.map((m) => [m.project.toString(), m.role]),
       );
-      filter._id = { $in: memberships.map((m) => m.project) };
+      filter.$or = [
+        { _id: { $in: memberProjectIds } },
+        { manager: req.user._id },
+      ];
     }
 
     if (["active", "archived"].includes(req.query.status))
@@ -47,10 +51,26 @@ exports.listProjects = async (req, res, next) => {
       Project.countDocuments(filter),
     ]);
 
-    const data = projects.map((p) => ({
-      ...p.toObject(),
-      myRole: roleByProject ? roleByProject.get(p._id.toString()) : "admin",
-    }));
+    const data = projects.map((p) => {
+      const projObj = p.toObject();
+      const isAssignedManager =
+        p.manager &&
+        (p.manager._id
+          ? p.manager._id.equals(req.user._id)
+          : p.manager.equals(req.user._id));
+      let myRole = roleByProject
+        ? roleByProject.get(p._id.toString())
+        : req.user.role === "admin"
+        ? "admin"
+        : null;
+      if (!myRole && isAssignedManager) {
+        myRole = "project_manager";
+      }
+      return {
+        ...projObj,
+        myRole: myRole || (req.user.role === "admin" ? "admin" : "viewer"),
+      };
+    });
 
     res.json({
       data,
