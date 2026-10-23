@@ -222,8 +222,6 @@ export default function TaskDetail() {
     );
   }
 
-  const projectId = task.project?._id || task.project;
-
   return (
     <DashboardLayout>
       {/* TOP NAVIGATION & VERSION BADGE */}
