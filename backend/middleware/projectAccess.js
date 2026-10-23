@@ -24,11 +24,18 @@ const loadProject =
           project: project._id,
           user: req.user._id,
         });
-        // 404, not 403: don't reveal that a project exists to people outside it
-        if (!membership)
-          return res.status(404).json({ message: "Project not found" });
-        req.projectRole = membership.role;
-        req.membership = membership;
+        if (!membership) {
+          // If the user is the assigned manager on the project document
+          if (project.manager && project.manager.equals(req.user._id)) {
+            req.projectRole = "project_manager";
+          } else {
+            // 404, not 403: don't reveal that a project exists to people outside it
+            return res.status(404).json({ message: "Project not found" });
+          }
+        } else {
+          req.projectRole = membership.role;
+          req.membership = membership;
+        }
       }
 
       req.project = project;
