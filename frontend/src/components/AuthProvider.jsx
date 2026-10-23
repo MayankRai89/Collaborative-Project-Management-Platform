@@ -26,9 +26,14 @@ export default function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await api.post("/auth/logout");
-    queryClient.clear(); // drop every cached query so the next user never sees old data
+    // Optimistically clear immediately so the UI responds in 0ms without waiting for network
     queryClient.setQueryData(["me"], null);
+    queryClient.clear();
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignore background logout network errors
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth, ROLE_LABELS } from "../../utils/auth";
 import {
@@ -26,6 +26,11 @@ export default function DashboardLayout({ children, title, subtitle }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile drawer on route transition
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const navLinks = [
     { label: "01 // DASHBOARD", path: "/dashboard", icon: LayoutDashboard },
@@ -131,18 +136,26 @@ export default function DashboardLayout({ children, title, subtitle }) {
             </div>
           </div>
 
-          {/* Top Bar Right: Role Badge & Quick User Info */}
-          <div className="flex items-center gap-3">
+          {/* Top Bar Right: Role Badge & Quick User Info & Logout */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <span
-              className={`text-xs font-mono font-bold px-2.5 py-1 uppercase tracking-widest ${
+              className={`text-[10px] sm:text-xs font-mono font-bold px-2 py-1 uppercase tracking-wider sm:tracking-widest ${
                 ROLE_BADGE_STYLE[user?.role] || ROLE_BADGE_STYLE.viewer
               }`}
             >
-              ROLE: {ROLE_LABELS[user?.role]}
+              <span className="hidden sm:inline">ROLE: </span>{ROLE_LABELS[user?.role] || user?.role}
             </span>
-            <div className="h-8 w-8 bg-[#0A0A0A] text-[#C6FF3D] font-mono font-bold flex items-center justify-center text-xs border border-black">
+            <div className="h-8 w-8 bg-[#0A0A0A] text-[#C6FF3D] font-mono font-bold flex items-center justify-center text-xs border border-black shrink-0">
               {user?.name?.slice(0, 2).toUpperCase()}
             </div>
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 border border-[#0A0A0A] bg-white px-2.5 sm:px-3 py-1.5 text-xs font-mono font-bold text-[#0A0A0A] hover:bg-[#EF4444] hover:text-white hover:border-[#EF4444] transition-colors shadow-[2px_2px_0px_0px_#0A0A0A] active:translate-x-0.5 active:translate-y-0.5"
+              title="Sign Out"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline sm:inline">LOGOUT</span>
+            </button>
           </div>
         </header>
 

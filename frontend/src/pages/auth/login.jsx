@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,8 +21,10 @@ const DEMO_ACCOUNTS = [
 
 export default function Login() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isLoading, login } = useAuth();
   const [serverError, setServerError] = useState("");
+  const [quickLoggingIn, setQuickLoggingIn] = useState(null);
 
   const {
     register,
@@ -39,14 +41,26 @@ export default function Login() {
     setServerError("");
     try {
       await login(values.email, values.password);
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message.toUpperCase() : "AUTHENTICATION FAILED");
     }
   };
 
-  const fillDemo = (account) => {
+  // Instant 1-click login for any demo role
+  const handleQuickLogin = async (account) => {
+    setServerError("");
     setValue("email", account.email, { shouldValidate: true });
     setValue("password", account.password, { shouldValidate: true });
+    setQuickLoggingIn(account.role);
+    try {
+      await login(account.email, account.password);
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      setServerError(err instanceof ApiError ? err.message.toUpperCase() : "AUTHENTICATION FAILED");
+    } finally {
+      setQuickLoggingIn(null);
+    }
   };
 
   return (
@@ -87,8 +101,21 @@ export default function Login() {
       </div>
 
       {/* RIGHT: Login Form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-6 sm:p-12 md:p-16">
-        <div className="w-full max-w-md bg-[#FFFFFF] border border-[#0A0A0A] p-8 sm:p-10 shadow-[4px_4px_0px_0px_#0A0A0A]">
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-4 sm:p-8 md:p-12 lg:p-16">
+        <div className="w-full max-w-md bg-[#FFFFFF] border border-[#0A0A0A] p-6 sm:p-10 shadow-[4px_4px_0px_0px_#0A0A0A]">
+          {/* Mobile Brand Top Banner */}
+          <div className="lg:hidden flex items-center justify-between mb-6 pb-4 border-b border-[#0A0A0A]">
+            <div className="flex items-center gap-2">
+              <span className="bg-[#C6FF3D] text-[#0A0A0A] font-black px-2 py-0.5 text-xs font-mono tracking-widest">
+                SNITCH // OS
+              </span>
+              <span className="text-xs font-mono text-[#737373]">SYS_CORE v2.4</span>
+            </div>
+            <span className="font-mono text-[10px] bg-[#0A0A0A] text-[#C6FF3D] px-1.5 py-0.5 font-bold">
+              PORT: 4000
+            </span>
+          </div>
+
           <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-4 mb-6">
             <div>
               <span className="text-xs font-mono font-bold tracking-widest text-[#737373] uppercase">
@@ -114,7 +141,7 @@ export default function Login() {
                 type="email"
                 autoComplete="email"
                 placeholder="name@example.com"
-                className="w-full border border-[#0A0A0A] bg-white px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder-[#A3A3A3] outline-none focus:bg-[#FAF9F5] focus:ring-2 focus:ring-[#C6FF3D]"
+                className="w-full border border-[#0A0A0A] bg-white px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder-[#A3A3A3] outline-none transition-colors duration-150 focus:bg-[#FAF9F5] focus:ring-2 focus:ring-[#C6FF3D]"
                 {...register("email")}
               />
               {errors.email && (
@@ -136,7 +163,7 @@ export default function Login() {
                 type="password"
                 autoComplete="current-password"
                 placeholder="••••••••••••"
-                className="w-full border border-[#0A0A0A] bg-white px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder-[#A3A3A3] outline-none focus:bg-[#FAF9F5] focus:ring-2 focus:ring-[#C6FF3D]"
+                className="w-full border border-[#0A0A0A] bg-white px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder-[#A3A3A3] outline-none transition-colors duration-150 focus:bg-[#FAF9F5] focus:ring-2 focus:ring-[#C6FF3D]"
                 {...register("password")}
               />
               {errors.password && (
@@ -157,37 +184,56 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full border border-[#0A0A0A] bg-[#0A0A0A] py-3 text-sm font-mono font-bold uppercase tracking-widest text-white transition-all hover:bg-[#C6FF3D] hover:text-[#0A0A0A] disabled:opacity-50"
+              disabled={isSubmitting || quickLoggingIn !== null}
+              className="w-full border border-[#0A0A0A] bg-[#0A0A0A] py-3 text-sm font-mono font-bold uppercase tracking-widest text-white transition-all duration-150 hover:bg-[#C6FF3D] hover:text-[#0A0A0A] disabled:opacity-50 active:translate-x-0.5 active:translate-y-0.5"
             >
               {isSubmitting ? "AUTHENTICATING..." : "ENTER WORKSPACE ->"}
             </button>
           </form>
 
-          {/* Quick-fill Demo Accounts */}
+          {/* Quick 1-Click Role Login Presets */}
           <div className="mt-8 border-t border-[#E5E5E0] pt-6">
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#737373]">
-                DEMO PRESETS (ONE-CLICK FILL)
+                ONE-CLICK ROLE PRESETS
               </span>
-              <span className="text-[10px] font-mono bg-[#E5E5E0] px-1 text-[#0A0A0A]">TEST ENV</span>
+              <span className="text-[10px] font-mono bg-[#C6FF3D] text-[#0A0A0A] font-bold px-1.5 py-0.5">
+                INSTANT
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {DEMO_ACCOUNTS.map((a) => (
-                <button
-                  key={a.email}
-                  type="button"
-                  onClick={() => fillDemo(a)}
-                  className="group flex flex-col items-start border border-[#0A0A0A] bg-[#F5F5F2] p-2.5 text-left transition-all hover:bg-[#0A0A0A] hover:text-white"
-                >
-                  <span className="text-xs font-mono font-black tracking-wider group-hover:text-[#C6FF3D]">
-                    {a.label}
-                  </span>
-                  <span className="text-[10px] font-mono text-[#737373] group-hover:text-[#A3A3A3] truncate w-full">
-                    {a.email}
-                  </span>
-                </button>
-              ))}
+              {DEMO_ACCOUNTS.map((a) => {
+                const isCurrentLoading = quickLoggingIn === a.role;
+                return (
+                  <button
+                    key={a.email}
+                    type="button"
+                    disabled={isSubmitting || quickLoggingIn !== null}
+                    onClick={() => handleQuickLogin(a)}
+                    className={`group relative flex flex-col items-start border border-[#0A0A0A] p-2.5 text-left transition-all duration-150 hover:shadow-[2px_2px_0px_0px_#0A0A0A] active:translate-x-0.5 active:translate-y-0.5 ${
+                      isCurrentLoading
+                        ? "bg-[#0A0A0A] text-[#C6FF3D]"
+                        : "bg-[#F5F5F2] hover:bg-[#0A0A0A] hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-mono font-black tracking-wider group-hover:text-[#C6FF3D]">
+                        {a.label}
+                      </span>
+                      {isCurrentLoading ? (
+                        <span className="h-2 w-2 rounded-full bg-[#C6FF3D] animate-ping"></span>
+                      ) : (
+                        <span className="text-[10px] font-mono text-[#737373] group-hover:text-[#C6FF3D]">
+                          &rarr;
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-mono text-[#737373] group-hover:text-[#A3A3A3] truncate w-full mt-0.5">
+                      {a.email}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

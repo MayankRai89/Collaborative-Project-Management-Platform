@@ -19,7 +19,14 @@ const queryClient = new QueryClient({
         queryClient.setQueryData(["me"], null);
     },
   }),
-  defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 60 * 1000, // 1 minute fresh cache: switching pages is instant
+      gcTime: 10 * 60 * 1000, // Keep in memory for 10 minutes
+    },
+  },
 });
 
 createRoot(document.getElementById("root")).render(
