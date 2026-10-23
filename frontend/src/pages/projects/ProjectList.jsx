@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Trash2,
   ExternalLink,
+  Edit,
+  UserCheck,
 } from "lucide-react";
 
 export default function ProjectList() {
@@ -19,11 +21,23 @@ export default function ProjectList() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [managerId, setManagerId] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState(null); // project object for Edit modal
+  const [changingPmProject, setChangingPmProject] = useState(null); // project object for Quick Change PM modal
+
+  // Create form state
+  const [createName, setCreateName] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [createManagerId, setCreateManagerId] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Edit form state
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editManagerId, setEditManagerId] = useState("");
+
+  // Quick PM state
+  const [quickPmId, setQuickPmId] = useState("");
 
   const { data: projectsData, isLoading } = useQuery({
     queryKey: ["projects", search, statusFilter],
@@ -34,27 +48,61 @@ export default function ProjectList() {
     },
   });
 
-  // Query Project Managers for initial assignment
-  const { data: managersData } = useQuery({
-    queryKey: ["project-managers-lookup"],
-    queryFn: () => api.get("/users?role=project_manager&limit=50"),
-    enabled: isModalOpen,
+  // Query all active users for PM selection (accessible by Admins)
+  const { data: usersData } = useQuery({
+    queryKey: ["admin-users-lookup"],
+    queryFn: () => api.get("/users?limit=100"),
+    enabled: user?.role === "admin",
   });
 
-  const projectManagers = managersData?.data || [];
+  const allActiveUsers = usersData?.data || [];
+  // Project managers are active users with role 'project_manager'
+  const projectManagers = allActiveUsers.filter(
+    (u) => u.isActive && u.role === "project_manager"
+  );
 
   const createProjectMutation = useMutation({
     mutationFn: (newProj) => api.post("/projects", newProj),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setIsModalOpen(false);
-      setName("");
-      setDescription("");
-      setManagerId("");
+      setIsCreateModalOpen(false);
+      setCreateName("");
+      setCreateDescription("");
+      setCreateManagerId("");
       setErrorMsg("");
     },
     onError: (err) => {
       setErrorMsg(err.message || "Failed to create project");
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({ id, name, description, managerId, currentManagerId }) => {
+      await api.patch(`/projects/${id}`, { name, description });
+      if (managerId && managerId !== currentManagerId) {
+        await api.patch(`/projects/${id}/manager`, { managerId });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setEditingProject(null);
+      setErrorMsg("");
+    },
+    onError: (err) => {
+      setErrorMsg(err.message || "Failed to update project");
+    },
+  });
+
+  const assignManagerMutation = useMutation({
+    mutationFn: ({ projectId, managerId }) =>
+      api.patch(`/projects/${projectId}/manager`, { managerId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setChangingPmProject(null);
+      setQuickPmId("");
+    },
+    onError: (err) => {
+      alert(err.message || "Failed to assign project manager");
     },
   });
 
@@ -77,13 +125,36 @@ export default function ProjectList() {
 
   const handleCreate = (e) => {
     e.preventDefault();
-    if (!name.trim()) {
+    if (!createName.trim()) {
       setErrorMsg("PROJECT NAME IS REQUIRED");
       return;
     }
-    const payload = { name, description };
-    if (managerId) payload.managerId = managerId;
+    const payload = { name: createName.trim(), description: createDescription };
+    if (createManagerId) payload.managerId = createManagerId;
     createProjectMutation.mutate(payload);
+  };
+
+  const handleEditSubmit = (e) => {
+    e.preventDefault();
+    if (!editName.trim()) {
+      setErrorMsg("PROJECT NAME IS REQUIRED");
+      return;
+    }
+    updateProjectMutation.mutate({
+      id: editingProject._id,
+      name: editName.trim(),
+      description: editDescription,
+      managerId: editManagerId,
+      currentManagerId: editingProject.manager?._id || editingProject.manager,
+    });
+  };
+
+  const openEditModal = (proj) => {
+    setEditingProject(proj);
+    setEditName(proj.name || "");
+    setEditDescription(proj.description || "");
+    setEditManagerId(proj.manager?._id || proj.manager || "");
+    setErrorMsg("");
   };
 
   const projects = projectsData?.data || [];
@@ -129,7 +200,7 @@ export default function ProjectList() {
 
         {user?.role === "admin" && (
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center justify-center gap-2 border border-[#0A0A0A] bg-[#0A0A0A] px-4 py-2.5 text-xs font-mono font-bold text-white uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all shrink-0"
           >
             <Plus className="h-4 w-4" />
@@ -190,7 +261,24 @@ export default function ProjectList() {
 
                 <div>
                   <div className="border-t border-[#E5E5E0] pt-4 mb-3 flex items-center justify-between text-[11px] font-mono text-[#737373]">
-                    <span>MANAGER: {proj.manager?.name || "UNASSIGNED"}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold">PM:</span>
+                      <span className="text-[#0A0A0A] font-medium">
+                        {proj.manager?.name || "UNASSIGNED"}
+                      </span>
+                      {user?.role === "admin" && (
+                        <button
+                          onClick={() => {
+                            setChangingPmProject(proj);
+                            setQuickPmId(proj.manager?._id || proj.manager || "");
+                          }}
+                          className="ml-1 text-[10px] border border-black px-1.5 py-0.2 hover:bg-[#C6FF3D] text-black font-mono uppercase font-bold"
+                          title="Quick Change PM"
+                        >
+                          CHANGE
+                        </button>
+                      )}
+                    </div>
                     <span className="font-bold text-[#0A0A0A] bg-[#F5F5F2] px-1.5 py-0.5 border border-[#E5E5E0]">
                       {proj.myRole}
                     </span>
@@ -206,6 +294,16 @@ export default function ProjectList() {
                     </Link>
 
                     <div className="flex items-center gap-1.5">
+                      {user?.role === "admin" && (
+                        <button
+                          onClick={() => openEditModal(proj)}
+                          className="border border-[#0A0A0A] px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-[#0A0A0A] hover:text-white transition-colors"
+                          title="Edit Project Name & Scope"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </button>
+                      )}
+
                       {canManage && (
                         <button
                           onClick={() =>
@@ -254,15 +352,15 @@ export default function ProjectList() {
       )}
 
       {/* CREATE PROJECT MODAL */}
-      {isModalOpen && (
+      {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-lg border border-black bg-white p-6 sm:p-8 shadow-[6px_6px_0px_0px_#0A0A0A]">
             <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-4 mb-6">
               <h3 className="font-['Bebas_Neue','Oswald'] text-3xl uppercase text-[#0A0A0A]">
-                PROVISION NEW PROJECT
+                INITIALIZE NEW PROJECT NODE
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => setIsCreateModalOpen(false)}
                 className="p-1 hover:bg-[#F5F5F2] border border-black"
               >
                 <X className="h-5 w-5" />
@@ -283,8 +381,8 @@ export default function ProjectList() {
                 <input
                   type="text"
                   placeholder="E.G., MOBILE APP MVP"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
                   className="w-full border border-black p-2.5 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                   required
                 />
@@ -297,8 +395,8 @@ export default function ProjectList() {
                 <textarea
                   rows={3}
                   placeholder="MISSION BRIEFING & SCOPE..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  value={createDescription}
+                  onChange={(e) => setCreateDescription(e.target.value)}
                   className="w-full border border-black p-2.5 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                 />
               </div>
@@ -308,8 +406,8 @@ export default function ProjectList() {
                   ASSIGN PROJECT MANAGER
                 </label>
                 <select
-                  value={managerId}
-                  onChange={(e) => setManagerId(e.target.value)}
+                  value={createManagerId}
+                  onChange={(e) => setCreateManagerId(e.target.value)}
                   className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                 >
                   <option value="">SELECT A PROJECT MANAGER (OPTIONAL)</option>
@@ -324,7 +422,7 @@ export default function ProjectList() {
               <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => setIsCreateModalOpen(false)}
                   className="border border-black px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-[#F5F5F2]"
                 >
                   CANCEL
@@ -338,6 +436,159 @@ export default function ProjectList() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PROJECT MODAL */}
+      {editingProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg border border-black bg-white p-6 sm:p-8 shadow-[6px_6px_0px_0px_#0A0A0A]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-4 mb-6">
+              <h3 className="font-['Bebas_Neue','Oswald'] text-3xl uppercase text-[#0A0A0A]">
+                EDIT PROJECT // #{editingProject._id.slice(-6).toUpperCase()}
+              </h3>
+              <button
+                onClick={() => setEditingProject(null)}
+                className="p-1 hover:bg-[#F5F5F2] border border-black"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {errorMsg && (
+              <div className="mb-4 border border-[#EF4444] bg-[#FEF2F2] p-3 text-xs font-mono font-bold text-[#EF4444]">
+                [!] {errorMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  PROJECT NAME *
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  DESCRIPTION
+                </label>
+                <textarea
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  ASSIGNED PROJECT MANAGER
+                </label>
+                <select
+                  value={editManagerId}
+                  onChange={(e) => setEditManagerId(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                >
+                  <option value="">NO ASSIGNED MANAGER</option>
+                  {projectManagers.map((pm) => (
+                    <option key={pm._id} value={pm._id}>
+                      {pm.name} ({pm.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setEditingProject(null)}
+                  className="border border-black px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-[#F5F5F2]"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateProjectMutation.isPending}
+                  className="border border-black bg-[#0A0A0A] px-5 py-2 text-xs font-mono font-bold uppercase text-white hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-colors"
+                >
+                  {updateProjectMutation.isPending ? "SAVING..." : "UPDATE PROJECT ->"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK CHANGE PM MODAL */}
+      {changingPmProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md border border-black bg-white p-6 sm:p-8 shadow-[6px_6px_0px_0px_#0A0A0A]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-4 mb-4">
+              <h3 className="font-['Bebas_Neue','Oswald'] text-2xl uppercase text-[#0A0A0A]">
+                REASSIGN PROJECT MANAGER
+              </h3>
+              <button
+                onClick={() => setChangingPmProject(null)}
+                className="p-1 hover:bg-[#F5F5F2] border border-black"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs font-mono text-[#737373] mb-4">
+              ASSIGN PM FOR PROJECT: <strong className="text-black">{changingPmProject.name}</strong>
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  SELECT PROJECT MANAGER
+                </label>
+                <select
+                  value={quickPmId}
+                  onChange={(e) => setQuickPmId(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                >
+                  <option value="">SELECT A PROJECT MANAGER...</option>
+                  {projectManagers.map((pm) => (
+                    <option key={pm._id} value={pm._id}>
+                      {pm.name} ({pm.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setChangingPmProject(null)}
+                  className="border border-black px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-[#F5F5F2]"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="button"
+                  disabled={!quickPmId || assignManagerMutation.isPending}
+                  onClick={() =>
+                    assignManagerMutation.mutate({
+                      projectId: changingPmProject._id,
+                      managerId: quickPmId,
+                    })
+                  }
+                  className="border border-black bg-[#0A0A0A] px-5 py-2 text-xs font-mono font-bold uppercase text-white hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-colors disabled:opacity-50"
+                >
+                  {assignManagerMutation.isPending ? "UPDATING..." : "CONFIRM ASSIGNMENT ->"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
