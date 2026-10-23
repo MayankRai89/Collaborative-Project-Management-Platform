@@ -51,6 +51,17 @@ exports.listProjects = async (req, res, next) => {
       Project.countDocuments(filter),
     ]);
 
+    const projectIds = projects.map((p) => p._id);
+    const [allMembers, allTasks] = await Promise.all([
+      ProjectMember.find({ project: { $in: projectIds } }).populate(
+        "user",
+        "name email role isActive"
+      ),
+      Task.find({ project: { $in: projectIds } })
+        .populate("assignee", "name email")
+        .sort({ createdAt: -1 }),
+    ]);
+
     const data = projects.map((p) => {
       const projObj = p.toObject();
       const isAssignedManager =
@@ -66,9 +77,31 @@ exports.listProjects = async (req, res, next) => {
       if (!myRole && isAssignedManager) {
         myRole = "project_manager";
       }
+
+      const projMembers = allMembers
+        .filter((m) => m.project && m.project.equals(p._id))
+        .map((m) => ({
+          _id: m._id,
+          role: m.role,
+          user: m.user,
+        }));
+
+      const projTasks = allTasks
+        .filter((t) => t.project && t.project.equals(p._id))
+        .map((t) => ({
+          _id: t._id,
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          version: t.version,
+          assignee: t.assignee,
+        }));
+
       return {
         ...projObj,
         myRole: myRole || (req.user.role === "admin" ? "admin" : "viewer"),
+        members: projMembers,
+        tasks: projTasks,
       };
     });
 
