@@ -14,16 +14,26 @@ import {
   ExternalLink,
   Edit,
   UserCheck,
+  Layers,
+  LayoutGrid,
+  Users,
+  CheckSquare,
+  Shield,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 export default function ProjectList() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.systemRole === "admin";
   const queryClient = useQueryClient();
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'hierarchy'
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState(null); // project object for Edit modal
-  const [changingPmProject, setChangingPmProject] = useState(null); // project object for Quick Change PM modal
+  const [editingProject, setEditingProject] = useState(null);
+  const [changingPmProject, setChangingPmProject] = useState(null);
 
   // Create form state
   const [createName, setCreateName] = useState("");
@@ -39,6 +49,16 @@ export default function ProjectList() {
   // Quick PM state
   const [quickPmId, setQuickPmId] = useState("");
 
+  // Expanded project rows in hierarchy view
+  const [expandedProjects, setExpandedProjects] = useState({});
+
+  const toggleProjectExpand = (projId) => {
+    setExpandedProjects((prev) => ({
+      ...prev,
+      [projId]: !prev[projId],
+    }));
+  };
+
   const { data: projectsData, isLoading } = useQuery({
     queryKey: ["projects", search, statusFilter],
     queryFn: () => {
@@ -52,11 +72,10 @@ export default function ProjectList() {
   const { data: usersData } = useQuery({
     queryKey: ["admin-users-lookup"],
     queryFn: () => api.get("/users?limit=100"),
-    enabled: user?.role === "admin",
+    enabled: isAdmin,
   });
 
   const allActiveUsers = usersData?.data || [];
-  // Project managers are active users with role 'project_manager'
   const projectManagers = allActiveUsers.filter(
     (u) => u.isActive && u.role === "project_manager"
   );
@@ -166,8 +185,8 @@ export default function ProjectList() {
     >
       {/* TOOLBAR */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-8">
-        <div className="flex flex-1 items-center gap-3">
-          <div className="relative flex-1 max-w-md">
+        <div className="flex flex-1 items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#737373]" />
             <input
               type="text"
@@ -196,9 +215,33 @@ export default function ProjectList() {
               ARCHIVED
             </button>
           </div>
+
+          {/* ADMIN VIEW MODE SWITCH */}
+          {isAdmin && (
+            <div className="flex border border-[#0A0A0A] bg-white divide-x divide-[#0A0A0A]">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 transition-colors ${
+                  viewMode === "grid" ? "bg-[#0A0A0A] text-[#C6FF3D]" : "text-[#737373] hover:text-[#0A0A0A]"
+                }`}
+                title="Grid Cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("hierarchy")}
+                className={`p-2 transition-colors ${
+                  viewMode === "hierarchy" ? "bg-[#0A0A0A] text-[#C6FF3D]" : "text-[#737373] hover:text-[#0A0A0A]"
+                }`}
+                title="Global Hierarchy Oversight"
+              >
+                <Layers className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
 
-        {user?.role === "admin" && (
+        {isAdmin && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="flex items-center justify-center gap-2 border border-[#0A0A0A] bg-[#0A0A0A] px-4 py-2.5 text-xs font-mono font-bold text-white uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all shrink-0"
@@ -209,7 +252,7 @@ export default function ProjectList() {
         )}
       </div>
 
-      {/* PROJECTS GRID */}
+      {/* PROJECTS DISPLAY */}
       {isLoading ? (
         <div className="border border-[#0A0A0A] bg-white p-12 text-center font-mono text-xs text-[#737373]">
           // QUERYING_PROJECT_NODES...
@@ -223,11 +266,12 @@ export default function ProjectList() {
             NO PROJECTS REGISTERED MATCHING YOUR ACCESS PRIVILEGES.
           </p>
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
+        /* STANDARD GRID VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((proj) => {
             const isArchived = proj.status === "archived";
-            const canManage = user?.role === "admin" || proj.myRole === "project_manager";
+            const canManage = isAdmin || proj.myRole === "project_manager";
             return (
               <div
                 key={proj._id}
@@ -266,7 +310,7 @@ export default function ProjectList() {
                       <span className="text-[#0A0A0A] font-medium">
                         {proj.manager?.name || "UNASSIGNED"}
                       </span>
-                      {user?.role === "admin" && (
+                      {isAdmin && (
                         <button
                           onClick={() => {
                             setChangingPmProject(proj);
@@ -294,11 +338,11 @@ export default function ProjectList() {
                     </Link>
 
                     <div className="flex items-center gap-1.5">
-                      {user?.role === "admin" && (
+                      {isAdmin && (
                         <button
                           onClick={() => openEditModal(proj)}
                           className="border border-[#0A0A0A] px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-[#0A0A0A] hover:text-white transition-colors"
-                          title="Edit Project Name & Scope"
+                          title="Edit Project Scope"
                         >
                           <Edit className="h-3 w-3" />
                         </button>
@@ -324,7 +368,7 @@ export default function ProjectList() {
                         </button>
                       )}
 
-                      {user?.role === "admin" && (
+                      {isAdmin && (
                         <button
                           onClick={() => {
                             if (
@@ -345,6 +389,236 @@ export default function ProjectList() {
                     </div>
                   </div>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* HIERARCHY OVERSIGHT VIEW FOR ADMINS */
+        <div className="space-y-6">
+          {projects.map((proj) => {
+            const isExpanded = expandedProjects[proj._id] ?? true;
+            const members = proj.members || [];
+            const tasks = proj.tasks || [];
+            const isArchived = proj.status === "archived";
+            return (
+              <div
+                key={proj._id}
+                className="border-2 border-[#0A0A0A] bg-white shadow-[4px_4px_0px_0px_#0A0A0A]"
+              >
+                {/* PROJECT HEADER CARD */}
+                <div className="p-4 sm:p-5 border-b border-[#0A0A0A] bg-[#FAF9F5] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleProjectExpand(proj._id)}
+                      className="p-1 border border-black hover:bg-[#0A0A0A] hover:text-white transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`text-[9px] font-mono font-bold px-1.5 py-0.2 uppercase border border-black ${
+                            isArchived ? "bg-[#EF4444] text-white" : "bg-[#0A0A0A] text-[#C6FF3D]"
+                          }`}
+                        >
+                          {proj.status}
+                        </span>
+                        <Link
+                          to={`/projects/${proj._id}`}
+                          className="font-['Bebas_Neue','Oswald'] text-2xl text-[#0A0A0A] hover:underline uppercase tracking-wide flex items-center gap-1.5"
+                        >
+                          <span>{proj.name}</span>
+                          <ExternalLink className="h-3.5 w-3.5 text-[#737373]" />
+                        </Link>
+                      </div>
+                      {proj.description && (
+                        <p className="text-xs font-sans text-[#737373] line-clamp-1 mt-0.5">
+                          {proj.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* ASSIGNED PM */}
+                    <div className="flex items-center gap-2 border border-black bg-white px-3 py-1.5 text-xs font-mono">
+                      <Shield className="h-3.5 w-3.5 text-[#0A0A0A]" />
+                      <span className="text-[#737373]">PM:</span>
+                      <strong className="text-black">
+                        {proj.manager?.name || "UNASSIGNED"}
+                      </strong>
+                      <button
+                        onClick={() => {
+                          setChangingPmProject(proj);
+                          setQuickPmId(proj.manager?._id || proj.manager || "");
+                        }}
+                        className="ml-1 border border-black px-1.5 py-0.2 text-[10px] uppercase font-bold hover:bg-[#C6FF3D]"
+                      >
+                        CHANGE
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => openEditModal(proj)}
+                      className="border border-[#0A0A0A] px-2.5 py-1.5 text-xs font-mono font-bold uppercase hover:bg-black hover:text-white transition-colors"
+                      title="Edit Project"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleArchiveMutation.mutate({
+                          id: proj._id,
+                          isArchived,
+                        })
+                      }
+                      className="border border-[#0A0A0A] px-2.5 py-1.5 text-xs font-mono font-bold uppercase hover:bg-black hover:text-white transition-colors"
+                      title={isArchived ? "Restore Project" : "Archive Project"}
+                    >
+                      {isArchived ? (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      ) : (
+                        <Archive className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Permanently delete project "${proj.name}" and all tasks?`
+                          )
+                        ) {
+                          deleteProjectMutation.mutate(proj._id);
+                        }
+                      }}
+                      className="border border-[#EF4444] text-[#EF4444] px-2.5 py-1.5 text-xs font-mono font-bold uppercase hover:bg-[#EF4444] hover:text-white transition-colors"
+                      title="Delete Project"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* EXPANDABLE BODY: SQUAD & ALL TASKS */}
+                {isExpanded && (
+                  <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* SQUAD MEMBERS */}
+                    <div className="border border-[#0A0A0A] bg-[#FFFFFF] p-4 shadow-[2px_2px_0px_0px_#0A0A0A]">
+                      <div className="flex items-center justify-between border-b border-[#0A0A0A] pb-2 mb-3">
+                        <span className="font-['Bebas_Neue','Oswald'] text-lg uppercase tracking-wider text-[#0A0A0A]">
+                          PROJECT SQUAD [{members.length}]
+                        </span>
+                        <Link
+                          to={`/projects/${proj._id}/team`}
+                          className="text-[10px] font-mono font-bold uppercase text-[#737373] hover:text-black hover:underline"
+                        >
+                          ROSTER &rarr;
+                        </Link>
+                      </div>
+
+                      {members.length === 0 ? (
+                        <div className="text-xs font-mono text-[#A3A3A3] italic p-3 text-center">
+                          NO OPERATIVES ATTACHED
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {members.map((m) => (
+                            <div
+                              key={m._id}
+                              className="border border-[#E5E5E0] p-2 text-xs font-mono flex items-center justify-between bg-[#FAF9F5]"
+                            >
+                              <div>
+                                <div className="font-bold text-[#0A0A0A]">
+                                  {m.user?.name || "Operative"}
+                                </div>
+                                <div className="text-[10px] text-[#737373]">
+                                  {m.user?.email || ""}
+                                </div>
+                              </div>
+                              <span className="text-[9px] border border-black px-1.5 py-0.2 uppercase font-bold bg-[#F5F5F2]">
+                                {m.role.replace("_", " ")}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* SPRINT TASKS & ASSIGNED TEAMMATES */}
+                    <div className="lg:col-span-2 border border-[#0A0A0A] bg-[#FFFFFF] p-4 shadow-[2px_2px_0px_0px_#0A0A0A]">
+                      <div className="flex items-center justify-between border-b border-[#0A0A0A] pb-2 mb-3">
+                        <span className="font-['Bebas_Neue','Oswald'] text-lg uppercase tracking-wider text-[#0A0A0A]">
+                          ALL SPRINT TASKS [{tasks.length}]
+                        </span>
+                        <Link
+                          to={`/projects/${proj._id}`}
+                          className="text-[10px] font-mono font-bold uppercase text-[#737373] hover:text-black hover:underline"
+                        >
+                          TASK BOARD &rarr;
+                        </Link>
+                      </div>
+
+                      {tasks.length === 0 ? (
+                        <div className="text-xs font-mono text-[#A3A3A3] italic p-6 text-center">
+                          NO TASKS LOGGED IN THIS PROJECT.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs font-mono border-collapse">
+                            <thead>
+                              <tr className="border-b border-[#E5E5E0] bg-[#FAF9F5] text-[#737373]">
+                                <th className="p-2">TASK TITLE</th>
+                                <th className="p-2">STATUS</th>
+                                <th className="p-2">ASSIGNED TEAM MEMBER</th>
+                                <th className="p-2 text-right">VERSION</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#E5E5E0]">
+                              {tasks.map((t) => (
+                                <tr key={t._id} className="hover:bg-[#FAF9F5]">
+                                  <td className="p-2">
+                                    <Link
+                                      to={`/tasks/${t._id}`}
+                                      className="font-bold text-[#0A0A0A] hover:underline"
+                                    >
+                                      {t.title}
+                                    </Link>
+                                  </td>
+                                  <td className="p-2">
+                                    <span className="border border-black px-1.5 py-0.2 text-[9px] uppercase font-bold bg-[#F5F5F2]">
+                                      {t.status.replace("_", " ")}
+                                    </span>
+                                  </td>
+                                  <td className="p-2">
+                                    {t.assignee?.name ? (
+                                      <span className="font-bold text-[#0A0A0A] bg-[#C6FF3D] px-1.5 py-0.5 border border-black text-[10px]">
+                                        {t.assignee.name}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[#A3A3A3] italic text-[11px]">
+                                        UNASSIGNED
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 text-right text-[10px] text-[#737373]">
+                                    v{t.version ?? 1}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
