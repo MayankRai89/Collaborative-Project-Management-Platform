@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../utils/api";
 import { useAuth } from "../../utils/auth";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
-import { Search, UserPlus, Power, AlertCircle } from "lucide-react";
+import { Search } from "lucide-react";
 
-export default function UserManagement() {
+export default function Users() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");

@@ -1,0 +1,463 @@
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, ApiError } from "../../utils/api";
+import { useAuth } from "../../utils/auth";
+import DashboardLayout from "../../components/layouts/DashboardLayout";
+import {
+  ArrowLeft,
+  MessageSquare,
+  Send,
+  Trash2,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  RotateCcw,
+} from "lucide-react";
+
+const STATUS_OPTIONS = [
+  { value: "todo", label: "TO DO" },
+  { value: "in_progress", label: "IN PROGRESS" },
+  { value: "review", label: "IN REVIEW" },
+  { value: "completed", label: "COMPLETED" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "LOW" },
+  { value: "medium", label: "MEDIUM" },
+  { value: "high", label: "HIGH" },
+  { value: "urgent", label: "URGENT" },
+];
+
+export default function TaskDetail() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  // Task query
+  const { data: taskRes, isLoading: isTaskLoading, error: taskError, refetch } = useQuery({
+    queryKey: ["task", id],
+    queryFn: () => api.get(`/tasks/${id}`),
+  });
+
+  const task = taskRes?.data;
+
+  // Comments query
+  const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
+    queryKey: ["task-comments", id],
+    queryFn: () => api.get(`/tasks/${id}/comments`),
+  });
+
+  const comments = commentsRes?.data || [];
+
+  // Local form state
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState("todo");
+  const [priority, setPriority] = useState("medium");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [commentText, setCommentText] = useState("");
+
+  // Conflict state (409)
+  const [conflictModalOpen, setConflictModalOpen] = useState(false);
+  const [conflictData, setConflictData] = useState(null); // { currentTask, myChanges }
+
+  useEffect(() => {
+    if (task) {
+      setTitle(task.title || "");
+      setDescription(task.description || "");
+      setStatus(task.status || "todo");
+      setPriority(task.priority || "medium");
+      setAssigneeId(task.assignee?._id || task.assignee || "");
+    }
+  }, [task]);
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: (payload) => api.patch(`/tasks/${id}`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["task", id] });
+      queryClient.invalidateQueries({ queryKey: ["project-tasks"] });
+      setConflictModalOpen(false);
+      setConflictData(null);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 409) {
+        // Backend returned optimistic locking conflict
+        const serverTask = err.data?.currentTask;
+        setConflictData({
+          currentTask: serverTask,
+          myChanges: { title, description, status, priority, assigneeId },
+        });
+        setConflictModalOpen(true);
+      } else {
+        alert(err.message || "Failed to update task");
+      }
+    },
+  });
+
+  // Post comment mutation
+  const postCommentMutation = useMutation({
+    mutationFn: (text) => api.post(`/tasks/${id}/comments`, { text }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["task-comments", id] });
+      setCommentText("");
+    },
+  });
+
+  // Delete comment mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: (commentId) => api.delete(`/comments/${commentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["task-comments", id] });
+    },
+  });
+
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: () => api.delete(`/tasks/${id}`),
+    onSuccess: () => {
+      navigate(`/projects/${task.project._id || task.project}`);
+    },
+  });
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    updateMutation.mutate({
+      title,
+      description,
+      status,
+      priority,
+      assignee: assigneeId || null,
+      expectedVersion: task?.version,
+    });
+  };
+
+  const handleResolveUseLatest = () => {
+    if (conflictData?.currentTask) {
+      const serverTask = conflictData.currentTask;
+      setTitle(serverTask.title || "");
+      setDescription(serverTask.description || "");
+      setStatus(serverTask.status || "todo");
+      setPriority(serverTask.priority || "medium");
+      setAssigneeId(serverTask.assignee?._id || serverTask.assignee || "");
+      queryClient.setQueryData(["task", id], { data: serverTask });
+    }
+    setConflictModalOpen(false);
+  };
+
+  const handleResolveReapply = () => {
+    if (conflictData?.currentTask) {
+      updateMutation.mutate({
+        title,
+        description,
+        status,
+        priority,
+        assignee: assigneeId || null,
+        expectedVersion: conflictData.currentTask.version,
+      });
+    }
+  };
+
+  if (isTaskLoading) {
+    return (
+      <DashboardLayout>
+        <div className="border border-[#0A0A0A] bg-white p-12 text-center font-mono text-xs text-[#737373]">
+          // QUERYING_TASK_TELEMETRY...
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (taskError || !task) {
+    return (
+      <DashboardLayout>
+        <div className="border border-[#EF4444] bg-[#FEF2F2] p-8 text-center">
+          <p className="font-['Bebas_Neue','Oswald'] text-3xl text-[#EF4444] uppercase">
+            // TASK NODE NOT FOUND
+          </p>
+          <Link
+            to="/projects"
+            className="mt-6 inline-flex items-center gap-2 border border-black bg-black text-white px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-[#C6FF3D] hover:text-black"
+          >
+            RETURN TO PROJECTS
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const projectId = task.project?._id || task.project;
+
+  return (
+    <DashboardLayout>
+      {/* TOP NAVIGATION & VERSION BADGE */}
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          to={`/projects/${projectId}`}
+          className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-[#737373] hover:text-[#0A0A0A] uppercase transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>&larr; BACK TO PROJECT</span>
+        </Link>
+
+        <div className="flex items-center gap-2 font-mono text-xs">
+          <span className="bg-[#0A0A0A] text-[#C6FF3D] px-2.5 py-1 font-bold border border-black">
+            LOCK_VER: v{task.version ?? 1}
+          </span>
+          <span className="text-[#737373]">#{task._id.slice(-6).toUpperCase()}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* LEFT 2 COLS: TASK EDIT FORM */}
+        <div className="lg:col-span-2 border border-[#0A0A0A] bg-white p-6 sm:p-8 shadow-[4px_4px_0px_0px_#0A0A0A]">
+          <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-4 mb-6">
+            <h1 className="font-['Bebas_Neue','Oswald'] text-4xl text-[#0A0A0A] uppercase leading-none">
+              TASK SPECIFICATION
+            </h1>
+            <button
+              onClick={() => {
+                if (window.confirm("Permanently delete this task and all comment history?")) {
+                  deleteTaskMutation.mutate();
+                }
+              }}
+              className="text-[#EF4444] hover:text-black p-1 transition-colors"
+              title="Delete Task"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSave} className="space-y-6">
+            <div>
+              <label className="block text-xs font-mono font-bold uppercase mb-1.5">
+                TASK TITLE
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full border border-black p-3 text-sm font-bold font-sans outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1.5">
+                  PROGRESS STATUS
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono bg-white uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1.5">
+                  PRIORITY TIER
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono bg-white uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                >
+                  {PRIORITY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-mono font-bold uppercase mb-1.5">
+                DESCRIPTION & REQUIREMENTS
+              </label>
+              <textarea
+                rows={6}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full border border-black p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                placeholder="DETAILED SPECS..."
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-[#E5E5E0] pt-6">
+              <div className="text-[10px] font-mono text-[#737373]">
+                LAST UPDATED: {new Date(task.updatedAt || Date.now()).toLocaleTimeString()}
+              </div>
+
+              <button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="border border-black bg-[#0A0A0A] text-white px-6 py-2.5 text-xs font-mono font-bold uppercase tracking-widest hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all disabled:opacity-50"
+              >
+                {updateMutation.isPending ? "SAVING..." : "COMMIT CHANGES ->"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* RIGHT 1 COL: COMMENTS THREAD */}
+        <div className="border border-[#0A0A0A] bg-white p-6 shadow-[4px_4px_0px_0px_#0A0A0A] flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-[#0A0A0A] pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                <h3 className="font-['Bebas_Neue','Oswald'] text-2xl uppercase tracking-wide">
+                  AUDIT & COMMENTS
+                </h3>
+              </div>
+              <span className="font-mono text-xs font-bold text-[#737373]">
+                [{comments.length}]
+              </span>
+            </div>
+
+            {/* COMMENTS LIST */}
+            <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
+              {isCommentsLoading ? (
+                <div className="text-xs font-mono text-[#737373]">LOADING COMMS...</div>
+              ) : comments.length === 0 ? (
+                <div className="border border-dashed border-[#E5E5E0] p-6 text-center text-xs font-mono text-[#737373]">
+                  NO ACTIVITY LOGGED. POST THE FIRST UPDATE.
+                </div>
+              ) : (
+                comments.map((c) => (
+                  <div
+                    key={c._id}
+                    className="border border-[#0A0A0A] bg-[#FAF9F5] p-3 text-xs font-mono"
+                  >
+                    <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-1.5 mb-2 text-[10px]">
+                      <span className="font-bold text-[#0A0A0A]">
+                        {c.author?.name || "OPERATIVE"}
+                      </span>
+                      <div className="flex items-center gap-2 text-[#737373]">
+                        <span>{new Date(c.createdAt).toLocaleDateString()}</span>
+                        {(c.author?._id === user?._id || user?.role === "admin") && (
+                          <button
+                            onClick={() => deleteCommentMutation.mutate(c._id)}
+                            className="text-[#EF4444] hover:text-black"
+                            title="Delete comment"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[#0A0A0A] whitespace-pre-wrap">{c.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* POST COMMENT FORM */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (commentText.trim()) postCommentMutation.mutate(commentText.trim());
+            }}
+            className="mt-6 pt-4 border-t border-[#0A0A0A]"
+          >
+            <textarea
+              rows={3}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Post progress update or blocker..."
+              className="w-full border border-black p-2 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+            />
+            <button
+              type="submit"
+              disabled={postCommentMutation.isPending || !commentText.trim()}
+              className="mt-2 w-full border border-black bg-[#0A0A0A] text-white py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <Send className="h-3.5 w-3.5" />
+              <span>POST UPDATE</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* 409 CONFLICT MODAL */}
+      {conflictModalOpen && conflictData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-2xl border-2 border-[#EF4444] bg-[#FFFFFF] p-6 sm:p-8 shadow-[8px_8px_0px_0px_#EF4444]">
+            <div className="flex items-center gap-3 border-b-2 border-black pb-4 mb-6">
+              <span className="bg-[#EF4444] text-white p-2">
+                <AlertTriangle className="h-6 w-6" />
+              </span>
+              <div>
+                <span className="text-[10px] font-mono font-bold text-[#EF4444] tracking-widest uppercase">
+                  CONCURRENCY CONFLICT DETECTED [HTTP 409]
+                </span>
+                <h3 className="font-['Bebas_Neue','Oswald'] text-4xl text-[#0A0A0A] uppercase leading-none">
+                  THIS TASK CHANGED
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-xs font-mono text-[#525252] mb-6">
+              Another operative committed updates to this task while you were editing. To prevent overwriting work, inspect the discrepancies below:
+            </p>
+
+            <div className="grid grid-cols-2 gap-4 text-xs font-mono mb-6">
+              {/* YOUR CHANGES */}
+              <div className="border border-black p-4 bg-[#FAF9F5]">
+                <div className="font-bold border-b border-black pb-1 mb-2 text-[#0A0A0A]">
+                  YOUR ATTEMPTED CHANGES
+                </div>
+                <div className="space-y-1.5">
+                  <div><strong>Title:</strong> {conflictData.myChanges.title}</div>
+                  <div><strong>Status:</strong> {conflictData.myChanges.status}</div>
+                  <div><strong>Priority:</strong> {conflictData.myChanges.priority}</div>
+                  <div><strong>Description:</strong> {conflictData.myChanges.description?.slice(0, 60)}...</div>
+                </div>
+              </div>
+
+              {/* SERVER VERSION */}
+              <div className="border-2 border-[#C6FF3D] p-4 bg-[#0A0A0A] text-white">
+                <div className="font-bold border-b border-[#282828] pb-1 mb-2 text-[#C6FF3D]">
+                  LATEST SERVER VERSION (v{conflictData.currentTask?.version})
+                </div>
+                <div className="space-y-1.5 text-[#F5F5F2]">
+                  <div><strong>Title:</strong> {conflictData.currentTask?.title}</div>
+                  <div><strong>Status:</strong> {conflictData.currentTask?.status}</div>
+                  <div><strong>Priority:</strong> {conflictData.currentTask?.priority}</div>
+                  <div><strong>Description:</strong> {conflictData.currentTask?.description?.slice(0, 60)}...</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 border-t border-black pt-4">
+              <button
+                type="button"
+                onClick={handleResolveUseLatest}
+                className="border border-black bg-white px-5 py-2.5 text-xs font-mono font-bold uppercase hover:bg-[#F5F5F2]"
+              >
+                USE LATEST (DISCARD MINE)
+              </button>
+              <button
+                type="button"
+                onClick={handleResolveReapply}
+                className="border border-black bg-[#0A0A0A] text-[#C6FF3D] px-5 py-2.5 text-xs font-mono font-bold uppercase hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all"
+              >
+                RE-APPLY MY CHANGES (OVERWRITE v{conflictData.currentTask?.version})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
+  );
+}
