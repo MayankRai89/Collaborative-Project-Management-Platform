@@ -44,6 +44,7 @@ export default function ProjectTasks() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [assigneeFilter, setAssigneeFilter] = useState("all"); // 'all' | 'me' | 'unassigned' | userId
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTask, setNewTask] = useState({
@@ -105,9 +106,23 @@ export default function ProjectTasks() {
 
   const allTasks = tasksRes?.data || [];
 
+  const myTasksCount = allTasks.filter(
+    (t) => t.assignee?._id === user?._id || t.assignee === user?._id
+  ).length;
+
   const filteredTasks = allTasks.filter((t) => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
+    if (assigneeFilter === "me") {
+      const isMe = t.assignee?._id === user?._id || t.assignee === user?._id;
+      if (!isMe) return false;
+    } else if (assigneeFilter === "unassigned") {
+      if (t.assignee) return false;
+    } else if (assigneeFilter !== "all") {
+      const matches =
+        t.assignee?._id === assigneeFilter || t.assignee === assigneeFilter;
+      if (!matches) return false;
+    }
     if (search) {
       const q = search.toLowerCase();
       return (
