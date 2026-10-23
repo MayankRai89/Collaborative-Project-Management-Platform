@@ -21,11 +21,13 @@ export default function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
+    if (res?.token) localStorage.setItem("token", res.token);
     queryClient.setQueryData(["me"], res.user);
     return res.user;
   };
 
   const logout = async () => {
+    localStorage.removeItem("token");
     // Optimistically clear immediately so the UI responds in 0ms without waiting for network
     queryClient.setQueryData(["me"], null);
     queryClient.clear();

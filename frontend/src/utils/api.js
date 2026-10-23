@@ -12,11 +12,18 @@ export class ApiError extends Error {
 
 async function request(path, options = {}) {
   let res;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
   try {
     res = await fetch(`${BASE_URL}/api${path}`, {
       ...options,
       credentials: "include", // send and receive the httpOnly auth cookie
-      headers: { "Content-Type": "application/json", ...options.headers },
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+        ...options.headers,
+      },
     });
   } catch {
     throw new ApiError(0, "Cannot reach the server. Is the backend running?");
