@@ -43,7 +43,10 @@ export default function TaskDetail() {
 
   const task = taskRes?.task || taskRes?.data;
   const myRole = taskRes?.myRole || (user?.role === "admin" ? "admin" : "viewer");
-  const canManage = myRole === "admin" || myRole === "project_manager";
+  const canManage =
+    user?.role === "admin" ||
+    user?.systemRole === "admin" ||
+    myRole === "project_manager";
   const isAssignee = task?.assignee?._id === user?._id || task?.assignee === user?._id;
   const canEdit = canManage || (myRole === "team_member" && isAssignee);
 
@@ -89,7 +92,15 @@ export default function TaskDetail() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: (payload) => api.patch(`/tasks/${id}`, payload),
-    onSuccess: () => {
+    onSuccess: (resData) => {
+      const updated = resData?.task || resData?.data;
+      if (updated) {
+        queryClient.setQueryData(["task", id], (old) => ({
+          ...old,
+          task: updated,
+          data: updated,
+        }));
+      }
       queryClient.invalidateQueries({ queryKey: ["task", id] });
       queryClient.invalidateQueries({ queryKey: ["project-tasks"] });
       setConflictModalOpen(false);
@@ -158,7 +169,11 @@ export default function TaskDetail() {
       setStatus(serverTask.status || "todo");
       setPriority(serverTask.priority || "medium");
       setAssigneeId(serverTask.assignee?._id || serverTask.assignee || "");
-      queryClient.setQueryData(["task", id], { data: serverTask });
+      queryClient.setQueryData(["task", id], (old) => ({
+        ...old,
+        task: serverTask,
+        data: serverTask,
+      }));
     }
     setConflictModalOpen(false);
   };
