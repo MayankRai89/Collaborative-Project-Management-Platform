@@ -8,7 +8,7 @@ const STATUS_OPTIONS = [
   { value: "todo", label: "TO DO" },
   { value: "in_progress", label: "IN PROGRESS" },
   { value: "review", label: "IN REVIEW" },
-  { value: "completed", label: "COMPLETED" },
+  { value: "done", label: "DONE" },
 ];
 
 const PRIORITY_STYLES = {
@@ -103,7 +103,7 @@ export default function ProjectTasks() {
             <option value="todo">TO DO</option>
             <option value="in_progress">IN PROGRESS</option>
             <option value="review">IN REVIEW</option>
-            <option value="completed">COMPLETED</option>
+            <option value="done">DONE</option>
           </select>
 
           <select
@@ -373,7 +373,7 @@ export default function ProjectTasks() {
                     <option value="todo">TO DO</option>
                     <option value="in_progress">IN PROGRESS</option>
                     <option value="review">IN REVIEW</option>
-                    <option value="completed">COMPLETED</option>
+                    <option value="done">DONE</option>
                   </select>
                 </div>
               </div>

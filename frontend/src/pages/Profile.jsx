@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { api } from "../utils/api";
 import { useAuth, ROLE_LABELS } from "../utils/auth";
 import DashboardLayout from "../components/layouts/DashboardLayout";
-import { UserCheck, KeyRound, Shield, Check, AlertCircle } from "lucide-react";
+import { UserCheck, KeyRound, Shield, Check, AlertCircle, FolderGit2 } from "lucide-react";
 
 export default function Profile() {
   const { user } = useAuth();
@@ -14,6 +15,13 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
+  const { data: projectsData, isLoading: loadingProjects } = useQuery({
+    queryKey: ["profile-projects"],
+    queryFn: () => api.get("/projects?limit=50"),
+  });
+
+  const myProjects = projectsData?.data || [];
 
   const updateProfileMutation = useMutation({
     mutationFn: (payload) => api.patch("/users/me", payload),
@@ -168,6 +176,48 @@ export default function Profile() {
             </button>
           </div>
         </form>
+
+        {/* PROJECT MEMBERSHIPS LIST */}
+        <div className="mt-10 border-t-2 border-black pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderGit2 className="h-4 w-4 text-[#0A0A0A]" />
+            <h3 className="font-['Bebas_Neue','Oswald'] text-2xl uppercase text-[#0A0A0A]">
+              ASSIGNED PROJECT MEMBERSHIPS [{myProjects.length}]
+            </h3>
+          </div>
+
+          {loadingProjects ? (
+            <div className="text-xs font-mono text-[#737373]">LOADING MEMBERSHIPS...</div>
+          ) : myProjects.length === 0 ? (
+            <div className="border border-dashed border-[#E5E5E0] p-4 text-xs font-mono text-[#737373]">
+              NO ACTIVE PROJECT ALLOCATIONS ASSIGNED.
+            </div>
+          ) : (
+            <div className="divide-y divide-[#E5E5E0] border border-[#0A0A0A]">
+              {myProjects.map((p) => (
+                <div
+                  key={p._id}
+                  className="flex items-center justify-between p-3.5 bg-white hover:bg-[#FAF9F5] transition-colors"
+                >
+                  <div>
+                    <Link
+                      to={`/projects/${p._id}`}
+                      className="font-bold text-xs font-mono text-[#0A0A0A] hover:underline"
+                    >
+                      {p.name}
+                    </Link>
+                    <div className="text-[10px] font-mono text-[#737373] mt-0.5">
+                      STATUS: {p.status.toUpperCase()}
+                    </div>
+                  </div>
+                  <span className="border border-black px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-[#C6FF3D] text-[#0A0A0A]">
+                    {p.myRole}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -19,7 +19,7 @@ const STATUS_OPTIONS = [
   { value: "todo", label: "TO DO" },
   { value: "in_progress", label: "IN PROGRESS" },
   { value: "review", label: "IN REVIEW" },
-  { value: "completed", label: "COMPLETED" },
+  { value: "done", label: "DONE" },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -41,7 +41,11 @@ export default function TaskDetail() {
     queryFn: () => api.get(`/tasks/${id}`),
   });
 
-  const task = taskRes?.data;
+  const task = taskRes?.task || taskRes?.data;
+  const myRole = taskRes?.myRole || (user?.role === "admin" ? "admin" : "viewer");
+  const canManage = myRole === "admin" || myRole === "project_manager";
+  const isAssignee = task?.assignee?._id === user?._id || task?.assignee === user?._id;
+  const canEdit = canManage || (myRole === "team_member" && isAssignee);
 
   // Comments query
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
@@ -99,7 +103,7 @@ export default function TaskDetail() {
 
   // Post comment mutation
   const postCommentMutation = useMutation({
-    mutationFn: (text) => api.post(`/tasks/${id}/comments`, { text }),
+    mutationFn: (text) => api.post(`/tasks/${id}/comments`, { body: text }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", id] });
       setCommentText("");
@@ -124,14 +128,17 @@ export default function TaskDetail() {
 
   const handleSave = (e) => {
     e.preventDefault();
-    updateMutation.mutate({
+    const payload = {
       title,
       description,
       status,
-      priority,
-      assignee: assigneeId || null,
-      expectedVersion: task?.version,
-    });
+      version: task?.version,
+    };
+    if (canManage) {
+      payload.priority = priority;
+      payload.assigneeId = assigneeId || null;
+    }
+    updateMutation.mutate(payload);
   };
 
   const handleResolveUseLatest = () => {
@@ -149,14 +156,17 @@ export default function TaskDetail() {
 
   const handleResolveReapply = () => {
     if (conflictData?.currentTask) {
-      updateMutation.mutate({
+      const payload = {
         title,
         description,
         status,
-        priority,
-        assignee: assigneeId || null,
-        expectedVersion: conflictData.currentTask.version,
-      });
+        version: conflictData.currentTask.version,
+      };
+      if (canManage) {
+        payload.priority = priority;
+        payload.assigneeId = assigneeId || null;
+      }
+      updateMutation.mutate(payload);
     }
   };
 
@@ -355,7 +365,7 @@ export default function TaskDetail() {
                         )}
                       </div>
                     </div>
-                    <p className="text-[#0A0A0A] whitespace-pre-wrap">{c.text}</p>
+                    <p className="text-[#0A0A0A] whitespace-pre-wrap">{c.body || c.text}</p>
                   </div>
                 ))
               )}

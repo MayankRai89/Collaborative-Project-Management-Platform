@@ -4,7 +4,15 @@ import { Link } from "react-router-dom";
 import { api } from "../../utils/api";
 import { useAuth } from "../../utils/auth";
 import DashboardLayout from "../../components/layouts/DashboardLayout";
-import { Search, Plus, FolderGit2, X, AlertCircle } from "lucide-react";
+import {
+  Search,
+  Plus,
+  X,
+  Archive,
+  RefreshCw,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 
 export default function ProjectList() {
   const { user } = useAuth();
@@ -14,6 +22,7 @@ export default function ProjectList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [managerId, setManagerId] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const { data: projectsData, isLoading } = useQuery({
@@ -25,6 +34,15 @@ export default function ProjectList() {
     },
   });
 
+  // Query Project Managers for initial assignment
+  const { data: managersData } = useQuery({
+    queryKey: ["project-managers-lookup"],
+    queryFn: () => api.get("/users?role=project_manager&limit=50"),
+    enabled: isModalOpen,
+  });
+
+  const projectManagers = managersData?.data || [];
+
   const createProjectMutation = useMutation({
     mutationFn: (newProj) => api.post("/projects", newProj),
     onSuccess: () => {
@@ -32,10 +50,28 @@ export default function ProjectList() {
       setIsModalOpen(false);
       setName("");
       setDescription("");
+      setManagerId("");
       setErrorMsg("");
     },
     onError: (err) => {
       setErrorMsg(err.message || "Failed to create project");
+    },
+  });
+
+  const toggleArchiveMutation = useMutation({
+    mutationFn: ({ id, isArchived }) =>
+      isArchived
+        ? api.patch(`/projects/${id}/restore`)
+        : api.patch(`/projects/${id}/archive`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+
+  const deleteProjectMutation = useMutation({
+    mutationFn: (id) => api.delete(`/projects/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 
@@ -45,7 +81,9 @@ export default function ProjectList() {
       setErrorMsg("PROJECT NAME IS REQUIRED");
       return;
     }
-    createProjectMutation.mutate({ name, description });
+    const payload = { name, description };
+    if (managerId) payload.managerId = managerId;
+    createProjectMutation.mutate(payload);
   };
 
   const projects = projectsData?.data || [];
@@ -116,44 +154,102 @@ export default function ProjectList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((proj) => (
-            <Link
-              key={proj._id}
-              to={`/projects/${proj._id}`}
-              className="border border-[#0A0A0A] bg-white p-6 shadow-[3px_3px_0px_0px_#0A0A0A] hover:shadow-[5px_5px_0px_0px_#C6FF3D] transition-all flex flex-col justify-between group"
-            >
-              <div>
-                <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-3 mb-4">
-                  <span className="text-[10px] font-mono text-[#737373] uppercase tracking-widest">
-                    NODE // #{proj._id.slice(-6).toUpperCase()}
-                  </span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-2 py-0.5 uppercase ${
-                      proj.status === "archived"
-                        ? "bg-[#EF4444] text-white"
-                        : "bg-[#0A0A0A] text-[#C6FF3D]"
-                    }`}
-                  >
-                    {proj.status}
-                  </span>
+          {projects.map((proj) => {
+            const isArchived = proj.status === "archived";
+            const canManage = user?.role === "admin" || proj.myRole === "project_manager";
+            return (
+              <div
+                key={proj._id}
+                className="border border-[#0A0A0A] bg-white p-6 shadow-[3px_3px_0px_0px_#0A0A0A] hover:shadow-[5px_5px_0px_0px_#C6FF3D] transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-3 mb-4">
+                    <span className="text-[10px] font-mono text-[#737373] uppercase tracking-widest">
+                      NODE // #{proj._id.slice(-6).toUpperCase()}
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 uppercase ${
+                        isArchived
+                          ? "bg-[#EF4444] text-white"
+                          : "bg-[#0A0A0A] text-[#C6FF3D]"
+                      }`}
+                    >
+                      {proj.status}
+                    </span>
+                  </div>
+
+                  <Link to={`/projects/${proj._id}`} className="group block">
+                    <h3 className="font-['Bebas_Neue','Oswald'] text-3xl tracking-tight text-[#0A0A0A] group-hover:text-[#0A0A0A] group-hover:underline leading-tight mb-2">
+                      {proj.name}
+                    </h3>
+                  </Link>
+                  <p className="text-xs font-sans text-[#737373] line-clamp-3 mb-6">
+                    {proj.description || "NO_DESCRIPTION_REGISTERED"}
+                  </p>
                 </div>
 
-                <h3 className="font-['Bebas_Neue','Oswald'] text-3xl tracking-tight text-[#0A0A0A] group-hover:text-[#0A0A0A] leading-tight mb-2">
-                  {proj.name}
-                </h3>
-                <p className="text-xs font-sans text-[#737373] line-clamp-3 mb-6">
-                  {proj.description || "NO_DESCRIPTION_REGISTERED"}
-                </p>
-              </div>
+                <div>
+                  <div className="border-t border-[#E5E5E0] pt-4 mb-3 flex items-center justify-between text-[11px] font-mono text-[#737373]">
+                    <span>MANAGER: {proj.manager?.name || "UNASSIGNED"}</span>
+                    <span className="font-bold text-[#0A0A0A] bg-[#F5F5F2] px-1.5 py-0.5 border border-[#E5E5E0]">
+                      {proj.myRole}
+                    </span>
+                  </div>
 
-              <div className="border-t border-[#E5E5E0] pt-4 flex items-center justify-between text-[11px] font-mono text-[#737373]">
-                <span>MANAGER: {proj.manager?.name || "UNASSIGNED"}</span>
-                <span className="font-bold text-[#0A0A0A] bg-[#F5F5F2] px-1.5 py-0.5 border border-[#E5E5E0]">
-                  {proj.myRole}
-                </span>
+                  <div className="flex items-center justify-between gap-2 border-t border-[#E5E5E0] pt-3">
+                    <Link
+                      to={`/projects/${proj._id}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-[#0A0A0A] hover:underline"
+                    >
+                      <span>OPEN PROJECT</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+
+                    <div className="flex items-center gap-1.5">
+                      {canManage && (
+                        <button
+                          onClick={() =>
+                            toggleArchiveMutation.mutate({
+                              id: proj._id,
+                              isArchived,
+                            })
+                          }
+                          disabled={toggleArchiveMutation.isPending}
+                          className="border border-[#0A0A0A] px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-[#0A0A0A] hover:text-white transition-colors"
+                          title={isArchived ? "Restore Project" : "Archive Project"}
+                        >
+                          {isArchived ? (
+                            <RefreshCw className="h-3 w-3" />
+                          ) : (
+                            <Archive className="h-3 w-3" />
+                          )}
+                        </button>
+                      )}
+
+                      {user?.role === "admin" && (
+                        <button
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                `Permanently delete project "${proj.name}" and all tasks?`
+                              )
+                            ) {
+                              deleteProjectMutation.mutate(proj._id);
+                            }
+                          }}
+                          disabled={deleteProjectMutation.isPending}
+                          className="border border-[#EF4444] text-[#EF4444] px-2 py-1 text-[10px] font-mono font-bold uppercase hover:bg-[#EF4444] hover:text-white transition-colors"
+                          title="Delete Project"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -199,12 +295,30 @@ export default function ProjectList() {
                   DESCRIPTION
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   placeholder="MISSION BRIEFING & SCOPE..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full border border-black p-2.5 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  ASSIGN PROJECT MANAGER
+                </label>
+                <select
+                  value={managerId}
+                  onChange={(e) => setManagerId(e.target.value)}
+                  className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                >
+                  <option value="">SELECT A PROJECT MANAGER (OPTIONAL)</option>
+                  {projectManagers.map((pm) => (
+                    <option key={pm._id} value={pm._id}>
+                      {pm.name} ({pm.email})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">
