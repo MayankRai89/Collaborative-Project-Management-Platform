@@ -76,9 +76,7 @@ export default function ProjectList() {
   });
 
   const allActiveUsers = usersData?.data || [];
-  const projectManagers = allActiveUsers.filter(
-    (u) => u.isActive && u.role === "project_manager"
-  );
+  const projectManagers = allActiveUsers.filter((u) => u.isActive);
 
   const createProjectMutation = useMutation({
     mutationFn: (newProj) => api.post("/projects", newProj),
