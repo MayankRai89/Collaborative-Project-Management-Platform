@@ -24,11 +24,18 @@ export default function ProjectLayout() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPmModalOpen, setIsPmModalOpen] = useState(false);
+  const [isDirectivesModalOpen, setIsDirectivesModalOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editManagerId, setEditManagerId] = useState("");
   const [selectedPmId, setSelectedPmId] = useState("");
+  const [editDirectives, setEditDirectives] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
+  const openDirectivesModal = () => {
+    setEditDirectives(project?.adminNotes || "");
+    setIsDirectivesModalOpen(true);
+  };
 
   const { data: projectRes, isLoading, error, refetch } = useQuery({
     queryKey: ["project", id],
@@ -101,6 +108,18 @@ export default function ProjectLayout() {
     },
     onError: (err) => {
       alert(err.message || "Failed to assign project manager");
+    },
+  });
+
+  const updateDirectivesMutation = useMutation({
+    mutationFn: (adminNotes) => api.patch(`/projects/${id}`, { adminNotes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setIsDirectivesModalOpen(false);
+    },
+    onError: (err) => {
+      alert(err.message || "Failed to update directives");
     },
   });
 
@@ -204,6 +223,40 @@ export default function ProjectLayout() {
               <p className="mt-3 text-xs sm:text-sm font-sans text-[#525252] max-w-3xl leading-relaxed">
                 {project.description}
               </p>
+            )}
+
+            {/* ADMIN DIRECTIVES & STRATEGIC GUIDANCE TO PROJECT MANAGER */}
+            {(project.adminNotes || user?.role === "admin") && (
+              <div className="mt-4 border-2 border-black bg-[#FAF9F5] p-3.5 sm:p-4 shadow-[3px_3px_0px_0px_#0A0A0A]">
+                <div className="flex items-center justify-between gap-2 border-b border-[#E5E5E0] pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-[#EF4444] text-white px-2 py-0.5 text-[9px] font-mono font-bold uppercase tracking-wider border border-black">
+                      🔴 LEADERSHIP DIRECTIVE
+                    </span>
+                    <span className="text-xs font-mono font-bold text-black uppercase">
+                      ADMIN INSTRUCTIONS TO PROJECT MANAGER
+                    </span>
+                  </div>
+                  {user?.role === "admin" && (
+                    <button
+                      onClick={openDirectivesModal}
+                      className="text-[10px] font-mono font-bold text-black hover:text-[#EF4444] uppercase flex items-center gap-1 border border-black bg-white px-2 py-0.5"
+                    >
+                      <Edit className="h-3 w-3" />
+                      <span>{project.adminNotes ? "EDIT DIRECTIVE" : "+ ISSUE DIRECTIVE"}</span>
+                    </button>
+                  )}
+                </div>
+                {project.adminNotes ? (
+                  <p className="text-xs font-mono text-[#0A0A0A] whitespace-pre-wrap leading-relaxed">
+                    {project.adminNotes}
+                  </p>
+                ) : (
+                  <p className="text-xs font-mono text-[#737373] italic">
+                    No administrative directive issued for the Project Manager yet. Click "+ ISSUE DIRECTIVE" to post sprint priorities.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -455,6 +508,72 @@ export default function ProjectLayout() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN DIRECTIVES MODAL */}
+      {isDirectivesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg border border-black bg-white p-6 sm:p-8 shadow-[6px_6px_0px_0px_#0A0A0A]">
+            <div className="flex items-center justify-between border-b border-[#E5E5E0] pb-4 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="bg-[#EF4444] text-white px-2 py-0.5 text-[10px] font-mono font-bold uppercase border border-black">
+                  LEADERSHIP DIRECTIVE
+                </span>
+                <h3 className="font-['Bebas_Neue','Oswald'] text-2xl uppercase text-[#0A0A0A]">
+                  INSTRUCTIONS TO PROJECT MANAGER
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsDirectivesModalOpen(false)}
+                className="p-1 hover:bg-[#F5F5F2] border border-black"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs font-mono text-[#737373] mb-4">
+              Issue strategic priorities, deadlines, or operational expectations directly to the Project Manager for <strong className="text-black">{project.name}</strong>.
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateDirectivesMutation.mutate(editDirectives.trim());
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  DIRECTIVE & GUIDELINES
+                </label>
+                <textarea
+                  rows={5}
+                  value={editDirectives}
+                  onChange={(e) => setEditDirectives(e.target.value)}
+                  placeholder="e.g., Focus sprint deliverables on core authentication, OCC conflict handling, and automated seed verification. Team review scheduled for Friday..."
+                  className="w-full border border-black p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsDirectivesModalOpen(false)}
+                  className="border border-black px-4 py-2 text-xs font-mono font-bold uppercase hover:bg-[#F5F5F2]"
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateDirectivesMutation.isPending}
+                  className="border border-black bg-[#0A0A0A] px-5 py-2 text-xs font-mono font-bold uppercase text-white hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-colors disabled:opacity-50"
+                >
+                  {updateDirectivesMutation.isPending ? "SAVING..." : "COMMIT DIRECTIVE ->"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
