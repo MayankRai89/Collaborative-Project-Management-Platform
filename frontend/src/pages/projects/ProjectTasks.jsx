@@ -33,6 +33,7 @@ export default function ProjectTasks() {
     description: "",
     priority: "medium",
     status: "todo",
+    assigneeId: "",
   });
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -41,12 +42,18 @@ export default function ProjectTasks() {
     queryFn: () => api.get(`/projects/${project._id}/tasks`),
   });
 
+  const { data: membersRes } = useQuery({
+    queryKey: ["project-members", project._id],
+    queryFn: () => api.get(`/projects/${project._id}/members`),
+  });
+  const members = membersRes?.data || [];
+
   const createTaskMutation = useMutation({
     mutationFn: (payload) => api.post(`/projects/${project._id}/tasks`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-tasks", project._id] });
       setIsModalOpen(false);
-      setNewTask({ title: "", description: "", priority: "medium", status: "todo" });
+      setNewTask({ title: "", description: "", priority: "medium", status: "todo", assigneeId: "" });
       setErrorMsg("");
     },
     onError: (err) => {
@@ -75,7 +82,16 @@ export default function ProjectTasks() {
       setErrorMsg("TASK TITLE IS MANDATORY");
       return;
     }
-    createTaskMutation.mutate(newTask);
+    const payload = {
+      title: newTask.title.trim(),
+      description: newTask.description,
+      priority: newTask.priority,
+      status: newTask.status,
+    };
+    if (newTask.assigneeId) {
+      payload.assigneeId = newTask.assigneeId;
+    }
+    createTaskMutation.mutate(payload);
   };
 
   return (
@@ -376,6 +392,26 @@ export default function ProjectTasks() {
                     <option value="done">DONE</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1">
+                  ASSIGN TO OPERATIVE
+                </label>
+                <select
+                  value={newTask.assigneeId}
+                  onChange={(e) => setNewTask({ ...newTask, assigneeId: e.target.value })}
+                  className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                >
+                  <option value="">UNASSIGNED</option>
+                  {members
+                    .filter((m) => m.role !== "viewer" && m.user?.isActive)
+                    .map((m) => (
+                      <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
+                        {m.user?.name || "Operative"} ({m.user?.email || ""}) - [{m.role.replace("_", " ").toUpperCase()}]
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">

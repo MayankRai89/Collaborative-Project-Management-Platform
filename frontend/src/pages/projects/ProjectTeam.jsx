@@ -128,7 +128,7 @@ export default function ProjectTeam() {
                     </td>
                     <td className="p-3.5 text-[#737373]">{m.user.email}</td>
                     <td className="p-3.5">
-                      {canManage ? (
+                      {canManage && m.role !== "project_manager" ? (
                         <select
                           value={m.role}
                           onChange={(e) =>
@@ -139,12 +139,11 @@ export default function ProjectTeam() {
                           }
                           className="border border-[#0A0A0A] bg-white px-2.5 py-1 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                         >
-                          <option value="project_manager">PROJECT MANAGER</option>
                           <option value="team_member">TEAM MEMBER</option>
                           <option value="viewer">VIEWER</option>
                         </select>
                       ) : (
-                        <span className="border border-[#0A0A0A] px-2 py-0.5 text-[10px] uppercase font-bold bg-[#F5F5F2]">
+                        <span className="border border-[#0A0A0A] px-2 py-0.5 text-[10px] uppercase font-bold bg-[#C6FF3D] text-[#0A0A0A]">
                           {m.role.replace("_", " ")}
                         </span>
                       )}
@@ -269,7 +268,6 @@ export default function ProjectTeam() {
                   onChange={(e) => setSelectedRole(e.target.value)}
                   className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                 >
-                  <option value="project_manager">PROJECT MANAGER</option>
                   <option value="team_member">TEAM MEMBER</option>
                   <option value="viewer">VIEWER</option>
                 </select>

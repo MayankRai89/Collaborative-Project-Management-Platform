@@ -47,6 +47,15 @@ export default function TaskDetail() {
   const isAssignee = task?.assignee?._id === user?._id || task?.assignee === user?._id;
   const canEdit = canManage || (myRole === "team_member" && isAssignee);
 
+  // Project members for assignee dropdown
+  const projectId = task?.project?._id || task?.project;
+  const { data: membersRes } = useQuery({
+    queryKey: ["project-members", projectId],
+    queryFn: () => api.get(`/projects/${projectId}/members`),
+    enabled: !!projectId,
+  });
+  const members = membersRes?.data || [];
+
   // Comments query
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: ["task-comments", id],
@@ -259,7 +268,7 @@ export default function TaskDetail() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-mono font-bold uppercase mb-1.5">
                   PROGRESS STATUS
@@ -297,6 +306,29 @@ export default function TaskDetail() {
                       {opt.label}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono font-bold uppercase mb-1.5">
+                  ASSIGNED OPERATIVE
+                </label>
+                <select
+                  value={assigneeId}
+                  onChange={(e) => setAssigneeId(e.target.value)}
+                  disabled={!canManage}
+                  className={`w-full border border-black p-2.5 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D] ${
+                    !canManage ? "bg-[#F5F5F2] cursor-not-allowed text-[#737373]" : "bg-white"
+                  }`}
+                >
+                  <option value="">UNASSIGNED</option>
+                  {members
+                    .filter((m) => m.role !== "viewer" && m.user?.isActive)
+                    .map((m) => (
+                      <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
+                        {m.user?.name || "Operative"} ({m.user?.email || ""})
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
