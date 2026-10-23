@@ -17,7 +17,14 @@ const archivedGuard = (req, res) => {
 // A user's project role can never exceed their global role
 const exceedsGlobalRole = (user, projectRole) =>
   user.role === "viewer" && projectRole !== "viewer";
+const Task = require("../models/TaskModel");
 
+// Bumping `version` means anyone currently editing one of these tasks gets a 409 and sees the change
+const unassignTasks = (projectId, userId) =>
+  Task.updateMany(
+    { project: projectId, assignee: userId },
+    { $set: { assignee: null }, $inc: { version: 1 } },
+  );
 // GET /api/projects/:id/members?role=viewer   (any member, or admin)
 exports.listMembers = async (req, res, next) => {
   try {
@@ -57,12 +64,10 @@ exports.addMember = async (req, res, next) => {
         .json({ message: "Admins already have access to every project" });
     }
     if (exceedsGlobalRole(user, role)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "This user has a global viewer role, so they can only be a viewer",
-        });
+      return res.status(400).json({
+        message:
+          "This user has a global viewer role, so they can only be a viewer",
+      });
     }
 
     const existing = await ProjectMember.findOne({
@@ -94,11 +99,9 @@ exports.updateMemberRole = async (req, res, next) => {
 
     const { role } = req.body;
     if (!ASSIGNABLE_ROLES.includes(role)) {
-      return res
-        .status(400)
-        .json({
-          message: `role must be one of: ${ASSIGNABLE_ROLES.join(", ")}`,
-        });
+      return res.status(400).json({
+        message: `role must be one of: ${ASSIGNABLE_ROLES.join(", ")}`,
+      });
     }
 
     const member = await ProjectMember.findOne({
@@ -111,22 +114,17 @@ exports.updateMemberRole = async (req, res, next) => {
         .json({ message: "Member not found in this project" });
 
     if (member.role === "project_manager") {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Change the project manager with PATCH /projects/:id/manager",
-        });
+      return res.status(400).json({
+        message: "Change the project manager with PATCH /projects/:id/manager",
+      });
     }
 
     const user = await User.findById(member.user);
     if (exceedsGlobalRole(user, role)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "This user has a global viewer role, so they can only be a viewer",
-        });
+      return res.status(400).json({
+        message:
+          "This user has a global viewer role, so they can only be a viewer",
+      });
     }
 
     member.role = role;
@@ -154,12 +152,9 @@ exports.removeMember = async (req, res, next) => {
         .json({ message: "Member not found in this project" });
 
     if (member.role === "project_manager") {
-      return res
-        .status(400)
-        .json({
-          message:
-            "Assign a different project manager before removing this one",
-        });
+      return res.status(400).json({
+        message: "Assign a different project manager before removing this one",
+      });
     }
 
     // TODO Step 7: also unassign this user's tasks in this project here
@@ -169,3 +164,4 @@ exports.removeMember = async (req, res, next) => {
     next(err);
   }
 };
+await unassignTasks(req.project._id, member.user);

@@ -15,10 +15,22 @@ const {
   restoreProject,
   deleteProject,
 } = require("../controllers/projectController");
+const {
+  listProjectTasks,
+  createTask,
+} = require("../controllers/taskController");
 
 router.use(authMiddleware);
 
-router.use("/:id/members", require("./memberRoutes")); // <-- new
+router.use("/:id/members", require("./memberRoutes"));
+router.get("/:id/tasks", loadProject(), listProjectTasks);
+router.post(
+  "/:id/tasks",
+  loadProject(),
+  requireProjectRole("admin", "project_manager"),
+  createTask,
+);
+
 router.get("/", listProjects); // filtered by membership inside the controller
 router.post("/", requireRole("admin"), createProject);
 
