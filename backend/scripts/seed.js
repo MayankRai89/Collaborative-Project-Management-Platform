@@ -26,6 +26,12 @@ const usersData = [
     role: "team_member",
   },
   {
+    name: "Aisha Khan",
+    email: "aisha@example.com",
+    password: "Member@123",
+    role: "team_member",
+  },
+  {
     name: "Vikram Viewer",
     email: "viewer@example.com",
     password: "Viewer@123",
@@ -53,14 +59,15 @@ const usersData = [
     const createdUsers = {};
     for (const u of usersData) {
       const doc = await User.create(u);
-      createdUsers[u.role] = doc;
+      createdUsers[u.email] = doc;
       console.log(`  Created ${u.role.padEnd(16)}: ${u.email}`);
     }
 
-    const admin = createdUsers.admin;
-    const pm = createdUsers.project_manager;
-    const member = createdUsers.team_member;
-    const viewer = createdUsers.viewer;
+    const admin = createdUsers["admin@example.com"];
+    const pm = createdUsers["pm@example.com"];
+    const member = createdUsers["member@example.com"];
+    const member2 = createdUsers["aisha@example.com"];
+    const viewer = createdUsers["viewer@example.com"];
 
     // 2. Seed Projects
     console.log("Seeding projects...");
@@ -96,16 +103,19 @@ const usersData = [
       // Project 1 members
       { project: project1._id, user: pm._id, role: "project_manager" },
       { project: project1._id, user: member._id, role: "team_member" },
+      { project: project1._id, user: member2._id, role: "team_member" },
       { project: project1._id, user: viewer._id, role: "viewer" },
 
       // Project 2 members
       { project: project2._id, user: pm._id, role: "project_manager" },
       { project: project2._id, user: member._id, role: "team_member" },
+      { project: project2._id, user: member2._id, role: "team_member" },
       { project: project2._id, user: viewer._id, role: "viewer" },
 
       // Project 3 members
       { project: project3._id, user: pm._id, role: "project_manager" },
       { project: project3._id, user: member._id, role: "team_member" },
+      { project: project3._id, user: member2._id, role: "team_member" },
     ]);
     console.log("  Created project memberships for PM, Member, and Viewer.");
 
