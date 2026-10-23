@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, ROLE_LABELS } from "../../utils/auth";
 import {
   LayoutDashboard,
@@ -15,46 +14,20 @@ import {
   Layers,
   Eye,
   CheckSquare,
-  Repeat,
 } from "lucide-react";
 
 const ROLE_BADGE_STYLE = {
   admin: "bg-[#0A0A0A] text-[#C6FF3D] border border-[#C6FF3D]",
-  project_manager: "bg-[#181818] text-white border-l-4 border-l-[#C6FF3D] border-[#282828]",
+  project_manager:
+    "bg-[#181818] text-white border-l-4 border-l-[#C6FF3D] border-[#282828]",
   team_member: "bg-[#FFFFFF] text-[#0A0A0A] border border-[#0A0A0A]",
   viewer: "bg-transparent text-[#737373] border border-dashed border-[#737373]",
 };
 
-const SIMULATION_USERS = [
-  { label: "ADMIN (Global)", email: "admin@example.com", password: "Admin@123", role: "admin" },
-  { label: "PROJECT MANAGER", email: "pm@example.com", password: "Manager@123", role: "project_manager" },
-  { label: "MEMBER (Aisha)", email: "aisha@example.com", password: "Member@123", role: "team_member" },
-  { label: "MEMBER (Alex)", email: "member@example.com", password: "Member@123", role: "team_member" },
-];
-
 export default function DashboardLayout({ children, title, subtitle }) {
-  const { user, login, logout } = useAuth();
-  const queryClient = useQueryClient();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
-
-  const handleRoleSwitch = async (e) => {
-    const email = e.target.value;
-    if (!email || email === user?.email) return;
-    const target = SIMULATION_USERS.find((u) => u.email === email);
-    if (!target) return;
-
-    setIsSwitchingRole(true);
-    try {
-      await login(target.email, target.password);
-      queryClient.clear();
-      window.location.reload();
-    } catch (err) {
-      console.error("Failed to switch role:", err);
-      setIsSwitchingRole(false);
-    }
-  };
 
   // Close mobile drawer on route transition
   useEffect(() => {
@@ -68,7 +41,11 @@ export default function DashboardLayout({ children, title, subtitle }) {
   ];
 
   if (user?.role === "admin") {
-    navLinks.push({ label: "04 // USERS [ADMIN]", path: "/users", icon: Users });
+    navLinks.push({
+      label: "04 // USERS [ADMIN]",
+      path: "/users",
+      icon: Users,
+    });
   }
 
   navLinks.push({ label: "05 // PROFILE", path: "/profile", icon: UserCheck });
@@ -94,7 +71,9 @@ export default function DashboardLayout({ children, title, subtitle }) {
           {/* Navigation Links */}
           <nav className="mt-8 space-y-2">
             {navLinks.map((link) => {
-              const active = location.pathname === link.path || location.pathname.startsWith(`${link.path}/`);
+              const active =
+                location.pathname === link.path ||
+                location.pathname.startsWith(`${link.path}/`);
               const Icon = link.icon;
               return (
                 <Link
@@ -123,8 +102,12 @@ export default function DashboardLayout({ children, title, subtitle }) {
             <div className="text-[10px] font-mono text-[#737373] uppercase tracking-wider mb-1">
               AUTHENTICATED AS
             </div>
-            <div className="text-sm font-bold text-white truncate">{user?.name}</div>
-            <div className="text-xs font-mono text-[#737373] truncate">{user?.email}</div>
+            <div className="text-sm font-bold text-white truncate">
+              {user?.name}
+            </div>
+            <div className="text-xs font-mono text-[#737373] truncate">
+              {user?.email}
+            </div>
           </div>
 
           <div className="flex items-center justify-between mt-3">
@@ -157,7 +140,11 @@ export default function DashboardLayout({ children, title, subtitle }) {
               className="lg:hidden p-2 text-[#0A0A0A] hover:bg-[#F5F5F2] border border-[#0A0A0A]"
               aria-label="Toggle Navigation"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </button>
             <div className="hidden sm:block">
               <span className="text-xs font-mono tracking-widest text-[#737373] uppercase">
@@ -166,35 +153,15 @@ export default function DashboardLayout({ children, title, subtitle }) {
             </div>
           </div>
 
-          {/* Top Bar Right: Role Switcher & Role Badge & User & Logout */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-            {/* Quick Role Switcher */}
-            <div className="flex items-center gap-1.5 border border-[#0A0A0A] bg-[#F5F5F2] px-2 py-1 shadow-[2px_2px_0px_0px_#0A0A0A]">
-              <Repeat className={`h-3 w-3 text-[#0A0A0A] ${isSwitchingRole ? "animate-spin" : ""}`} />
-              <span className="text-[10px] font-mono font-bold text-[#737373] uppercase hidden md:inline">
-                SWITCH ROLE:
-              </span>
-              <select
-                value={user?.email || ""}
-                onChange={handleRoleSwitch}
-                disabled={isSwitchingRole}
-                className="bg-transparent text-[11px] font-mono font-bold uppercase text-[#0A0A0A] outline-none cursor-pointer"
-                title="Switch persona to test role-based capabilities"
-              >
-                {SIMULATION_USERS.map((u) => (
-                  <option key={u.email} value={u.email}>
-                    {u.label} {u.email === user?.email ? "★ ACTIVE" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          {/* Top Bar Right: Role Badge & Quick User Info & Logout */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <span
               className={`text-[10px] sm:text-xs font-mono font-bold px-2 py-1 uppercase tracking-wider sm:tracking-widest ${
                 ROLE_BADGE_STYLE[user?.role] || ROLE_BADGE_STYLE.viewer
               }`}
             >
-              <span className="hidden sm:inline">ROLE: </span>{ROLE_LABELS[user?.role] || user?.role}
+              <span className="hidden sm:inline">ROLE: </span>
+              {ROLE_LABELS[user?.role] || user?.role}
             </span>
             <div className="h-8 w-8 bg-[#0A0A0A] text-[#C6FF3D] font-mono font-bold flex items-center justify-center text-xs border border-black shrink-0">
               {user?.name?.slice(0, 2).toUpperCase()}
@@ -228,7 +195,9 @@ export default function DashboardLayout({ children, title, subtitle }) {
               </Link>
             ))}
             <div className="border-t border-[#282828] pt-3 flex justify-between items-center">
-              <span className="text-xs font-mono text-[#737373]">{user?.email}</span>
+              <span className="text-xs font-mono text-[#737373]">
+                {user?.email}
+              </span>
               <button
                 onClick={logout}
                 className="text-xs font-mono font-bold text-[#EF4444]"

@@ -14,7 +14,10 @@ export default function ProjectTeam() {
   const isManagerOrAdmin =
     user?.role === "admin" ||
     user?.systemRole === "admin" ||
+    user?.role === "project_manager" ||
     myRole === "project_manager" ||
+    project?.manager?._id === user?._id ||
+    project?.manager === user?._id ||
     outletCanManage;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -31,37 +34,20 @@ export default function ProjectTeam() {
   const members = membersRes?.data || [];
   const existingUserIds = new Set(members.map((m) => m.user?._id || m.user));
 
-  // If Admin, fetch all users; if PM, use search lookup
-  const { data: adminUsersRes } = useQuery({
-    queryKey: ["admin-all-users"],
-    queryFn: () => api.get("/users?limit=100"),
-    enabled: isAddModalOpen && (user?.role === "admin" || user?.systemRole === "admin"),
-  });
-
-  const { data: searchResults, isFetching: isSearching } = useQuery({
+  // Unified lookup: runs immediately when modal opens so PM/Admin sees all available candidates
+  const { data: lookupRes, isFetching: isSearching } = useQuery({
     queryKey: ["user-lookup", userQuery],
-    queryFn: () => api.get(`/users/lookup?search=${encodeURIComponent(userQuery)}`),
-    enabled: isAddModalOpen && userQuery.trim().length >= 2,
+    queryFn: () => {
+      const q = userQuery.trim() ? `?search=${encodeURIComponent(userQuery.trim())}` : "";
+      return api.get(`/users/lookup${q}`);
+    },
+    enabled: isAddModalOpen,
   });
 
-  // Calculate available candidates not already in this project
-  let candidateUsers = [];
-  if (user?.role === "admin" || user?.systemRole === "admin") {
-    const allUsers = adminUsersRes?.data || [];
-    candidateUsers = allUsers.filter(
-      (u) => u.isActive && !existingUserIds.has(u._id) && u.role !== "admin"
-    );
-    if (userQuery.trim()) {
-      const q = userQuery.toLowerCase();
-      candidateUsers = candidateUsers.filter(
-        (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
-      );
-    }
-  } else {
-    candidateUsers = (searchResults?.data || []).filter(
-      (u) => !existingUserIds.has(u._id)
-    );
-  }
+  const allLookupUsers = lookupRes?.data || [];
+  const candidateUsers = allLookupUsers.filter(
+    (u) => u.isActive && !existingUserIds.has(u._id) && u.role !== "admin"
+  );
 
   const addMemberMutation = useMutation({
     mutationFn: (payload) => api.post(`/projects/${project._id}/members`, payload),
@@ -305,9 +291,11 @@ export default function ProjectTeam() {
                   </div>
                 )}
 
-                {candidateUsers.length === 0 && !selectedUser && userQuery.length >= 2 && (
-                  <div className="text-xs font-mono text-[#737373] p-2 border border-dashed border-[#E5E5E0] text-center">
-                    NO UNASSIGNED USERS FOUND MATCHING CRITERIA.
+                {candidateUsers.length === 0 && !selectedUser && (
+                  <div className="text-xs font-mono text-[#737373] p-3 border border-dashed border-[#0A0A0A] bg-[#F5F5F2] text-center">
+                    {userQuery.trim()
+                      ? "NO UNASSIGNED USERS FOUND MATCHING QUERY."
+                      : "ALL ACTIVE OPERATIVES ARE ALREADY IN THIS PROJECT SQUAD."}
                   </div>
                 )}
 

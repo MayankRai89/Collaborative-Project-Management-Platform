@@ -36,9 +36,12 @@ export default function Dashboard() {
   const tasks = myTasksData?.data || [];
   const projects = projectsData?.data || [];
 
-  const statActiveProjects = projects.filter((p) => p.status === "active").length || 0;
+  const statActiveProjects =
+    projects.filter((p) => p.status === "active").length || 0;
   const statMyTasks = myTasksData?.total || 0;
-  const statOverdue = tasks.filter((t) => t.dueDate && new Date(t.dueDate) < new Date()).length || 0;
+  const statOverdue =
+    tasks.filter((t) => t.dueDate && new Date(t.dueDate) < new Date()).length ||
+    0;
   const statCompleted = tasks.filter((t) => t.status === "done").length || 0;
 
   return (
@@ -55,9 +58,13 @@ export default function Dashboard() {
             <FolderGit2 className="h-4 w-4 text-[#0A0A0A]" />
           </div>
           <div className="font-['Bebas_Neue','Oswald'] text-5xl font-black text-[#0A0A0A]">
-            {statActiveProjects < 10 ? `0${statActiveProjects}` : statActiveProjects}
+            {statActiveProjects < 10
+              ? `0${statActiveProjects}`
+              : statActiveProjects}
           </div>
-          <div className="mt-2 text-[11px] font-mono text-[#737373]">IN PIPELINE</div>
+          <div className="mt-2 text-[11px] font-mono text-[#737373]">
+            IN PIPELINE
+          </div>
         </div>
 
         {/* Stat 02 */}
@@ -69,7 +76,9 @@ export default function Dashboard() {
           <div className="font-['Bebas_Neue','Oswald'] text-5xl font-black text-[#0A0A0A]">
             {statMyTasks < 10 ? `0${statMyTasks}` : statMyTasks}
           </div>
-          <div className="mt-2 text-[11px] font-mono text-[#737373]">OPEN SPRINT TASKS</div>
+          <div className="mt-2 text-[11px] font-mono text-[#737373]">
+            OPEN SPRINT TASKS
+          </div>
         </div>
 
         {/* Stat 03 */}
@@ -81,7 +90,9 @@ export default function Dashboard() {
           <div className="font-['Bebas_Neue','Oswald'] text-5xl font-black text-[#EF4444]">
             {statOverdue < 10 ? `0${statOverdue}` : statOverdue}
           </div>
-          <div className="mt-2 text-[11px] font-mono text-[#EF4444] font-bold">NEEDS ATTENTION</div>
+          <div className="mt-2 text-[11px] font-mono text-[#EF4444] font-bold">
+            NEEDS ATTENTION
+          </div>
         </div>
 
         {/* Stat 04 */}
@@ -93,7 +104,9 @@ export default function Dashboard() {
           <div className="font-['Bebas_Neue','Oswald'] text-5xl font-black text-[#C6FF3D]">
             {statCompleted < 10 ? `0${statCompleted}` : statCompleted}
           </div>
-          <div className="mt-2 text-[11px] font-mono text-[#C6FF3D]">STATUS: SHIPPED</div>
+          <div className="mt-2 text-[11px] font-mono text-[#C6FF3D]">
+            STATUS: SHIPPED
+          </div>
         </div>
       </div>
 
@@ -223,7 +236,9 @@ export default function Dashboard() {
 
                   <div className="flex items-center justify-between text-[11px] font-mono text-[#737373] border-t border-[#E5E5E0] pt-2">
                     <span>PM: {proj.manager?.name || "UNASSIGNED"}</span>
-                    <span className="text-[#0A0A0A] font-bold">MY_ROLE: {proj.myRole}</span>
+                    <span className="text-[#0A0A0A] font-bold">
+                      MY_ROLE: {proj.myRole}
+                    </span>
                   </div>
                 </Link>
               ))}
@@ -245,7 +260,8 @@ export default function Dashboard() {
                   ADMIN GLOBAL OVERSIGHT // SQUADS & TASK ASSIGNMENTS
                 </h3>
                 <p className="text-xs font-mono text-[#737373] uppercase mt-0.5">
-                  CROSS-ORGANIZATIONAL TELEMETRY OF MANAGERS, MEMBERS & TASK ALLOCATIONS
+                  CROSS-ORGANIZATIONAL TELEMETRY OF MANAGERS, MEMBERS & TASK
+                  ALLOCATIONS
                 </p>
               </div>
             </div>

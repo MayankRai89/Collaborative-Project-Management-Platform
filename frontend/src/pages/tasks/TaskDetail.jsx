@@ -46,6 +46,7 @@ export default function TaskDetail() {
   const canManage =
     user?.role === "admin" ||
     user?.systemRole === "admin" ||
+    user?.role === "project_manager" ||
     myRole === "project_manager";
   const isAssignee = task?.assignee?._id === user?._id || task?.assignee === user?._id;
   const canEdit = canManage || (myRole === "team_member" && isAssignee);

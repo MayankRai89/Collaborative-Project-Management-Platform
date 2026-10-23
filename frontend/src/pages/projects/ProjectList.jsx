@@ -271,7 +271,13 @@ export default function ProjectList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((proj) => {
             const isArchived = proj.status === "archived";
-            const canManage = isAdmin || proj.myRole === "project_manager";
+            const isManagerOfThis =
+              proj.manager?._id === user?._id || proj.manager === user?._id;
+            const canManage =
+              isAdmin ||
+              user?.role === "project_manager" ||
+              proj.myRole === "project_manager" ||
+              isManagerOfThis;
             return (
               <div
                 key={proj._id}

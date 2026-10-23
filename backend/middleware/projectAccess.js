@@ -20,22 +20,22 @@ const loadProject =
       if (req.user.role === "admin") {
         req.projectRole = "admin"; // admins can see every project
       } else {
+        const isAssignedManager =
+          project.manager && project.manager.equals(req.user._id);
         const membership = await ProjectMember.findOne({
           project: project._id,
           user: req.user._id,
         });
-        if (!membership) {
-          // If the user is the assigned manager on the project document
-          if (project.manager && project.manager.equals(req.user._id)) {
-            req.projectRole = "project_manager";
-          } else {
-            // 404, not 403: don't reveal that a project exists to people outside it
-            return res.status(404).json({ message: "Project not found" });
-          }
-        } else {
+
+        if (isAssignedManager) {
+          req.projectRole = "project_manager";
+        } else if (membership) {
           req.projectRole = membership.role;
-          req.membership = membership;
+        } else {
+          // 404, not 403: don't reveal that a project exists to people outside it
+          return res.status(404).json({ message: "Project not found" });
         }
+        req.membership = membership;
       }
 
       req.project = project;

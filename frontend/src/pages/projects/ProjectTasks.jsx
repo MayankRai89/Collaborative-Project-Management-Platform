@@ -37,7 +37,10 @@ export default function ProjectTasks() {
   const canManage =
     user?.role === "admin" ||
     user?.systemRole === "admin" ||
+    user?.role === "project_manager" ||
     myRole === "project_manager" ||
+    project?.manager?._id === user?._id ||
+    project?.manager === user?._id ||
     outletCanManage;
 
   const [viewMode, setViewMode] = useState("table"); // 'table' | 'kanban'
@@ -692,9 +695,17 @@ export default function ProjectTasks() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono font-bold uppercase mb-1">
-                  ASSIGN TO OPERATIVE
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-mono font-bold uppercase">
+                    ASSIGN TO OPERATIVE
+                  </label>
+                  <Link
+                    to={`/projects/${project._id}/team`}
+                    className="text-[10px] font-mono font-bold text-[#737373] hover:text-[#0A0A0A] hover:underline"
+                  >
+                    + MANAGE SQUAD MEMBERS &rarr;
+                  </Link>
+                </div>
                 <select
                   value={newTask.assigneeId}
                   onChange={(e) => setNewTask({ ...newTask, assigneeId: e.target.value })}
@@ -709,6 +720,11 @@ export default function ProjectTasks() {
                       </option>
                     ))}
                 </select>
+                {members.filter((m) => m.role === "team_member").length === 0 && (
+                  <p className="text-[10px] font-mono text-[#737373] mt-1.5 bg-[#F5F5F2] p-1.5 border border-[#E5E5E0]">
+                    💡 <strong>Notice:</strong> No teammates added to this project squad yet. Go to the <strong>TEAM</strong> tab to add team members, or assign to yourself/unassigned.
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 border-t border-[#E5E5E0] pt-4 mt-6">

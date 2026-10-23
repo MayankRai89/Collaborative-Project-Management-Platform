@@ -54,8 +54,20 @@ export default function ProjectLayout() {
   );
 
   const project = projectRes?.project || projectRes?.data;
-  const myRole = projectRes?.myRole || project?.myRole || (user?.role === "admin" ? "admin" : "viewer");
-  const canManage = myRole === "admin" || myRole === "project_manager";
+  const isAssignedManager =
+    project?.manager?._id === user?._id || project?.manager === user?._id;
+  const myRole =
+    user?.role === "admin"
+      ? "admin"
+      : isAssignedManager || user?.role === "project_manager"
+      ? "project_manager"
+      : projectRes?.myRole || project?.myRole || "viewer";
+  const canManage =
+    user?.role === "admin" ||
+    user?.role === "project_manager" ||
+    isAssignedManager ||
+    myRole === "admin" ||
+    myRole === "project_manager";
 
   const archiveMutation = useMutation({
     mutationFn: () =>

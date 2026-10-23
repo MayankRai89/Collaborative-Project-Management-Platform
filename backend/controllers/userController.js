@@ -176,20 +176,20 @@ exports.lookupUsers = async (req, res, next) => {
   try {
     const search =
       typeof req.query.search === "string" ? req.query.search.trim() : "";
-    if (search.length < 2) {
-      return res
-        .status(400)
-        .json({ message: "search must be at least 2 characters" });
-    }
 
-    const regex = new RegExp(escapeRegex(search), "i");
-    const data = await User.find({
+    const filter = {
       isActive: true,
       role: { $ne: "admin" },
-      $or: [{ name: regex }, { email: regex }],
-    })
+    };
+
+    if (search.length > 0) {
+      const regex = new RegExp(escapeRegex(search), "i");
+      filter.$or = [{ name: regex }, { email: regex }];
+    }
+
+    const data = await User.find(filter)
       .select("name email role")
-      .limit(10);
+      .limit(100);
 
     res.json({ data });
   } catch (err) {

@@ -13,11 +13,30 @@ const schema = z.object({
 
 // Demo accounts aligned with backend seed data
 const DEMO_ACCOUNTS = [
-  { label: "ADMIN", role: "admin", email: "admin@example.com", password: "Admin@123" },
-  { label: "PROJECT MANAGER", role: "project_manager", email: "pm@example.com", password: "Manager@123" },
-  { label: "TEAM MEMBER (ALEX)", role: "team_member", email: "member@example.com", password: "Member@123" },
-  { label: "TEAM MEMBER (AISHA)", role: "team_member", email: "aisha@example.com", password: "Member@123" },
-  { label: "VIEWER", role: "viewer", email: "viewer@example.com", password: "Viewer@123" },
+  {
+    label: "ADMIN",
+    role: "admin",
+    email: "admin@example.com",
+    password: "Admin@123",
+  },
+  {
+    label: "PROJECT MANAGER",
+    role: "project_manager",
+    email: "pm@example.com",
+    password: "Manager@123",
+  },
+  {
+    label: "TEAM MEMBER",
+    role: "team_member",
+    email: "member@example.com",
+    password: "Member@123",
+  },
+  {
+    label: "VIEWER",
+    role: "viewer",
+    email: "viewer@example.com",
+    password: "Viewer@123",
+  },
 ];
 
 export default function Login() {
@@ -44,7 +63,11 @@ export default function Login() {
       await login(values.email, values.password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message.toUpperCase() : "AUTHENTICATION FAILED");
+      setServerError(
+        err instanceof ApiError
+          ? err.message.toUpperCase()
+          : "AUTHENTICATION FAILED",
+      );
     }
   };
 
@@ -58,7 +81,11 @@ export default function Login() {
       await login(account.email, account.password);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message.toUpperCase() : "AUTHENTICATION FAILED");
+      setServerError(
+        err instanceof ApiError
+          ? err.message.toUpperCase()
+          : "AUTHENTICATION FAILED",
+      );
     } finally {
       setQuickLoggingIn(null);
     }
@@ -74,9 +101,13 @@ export default function Login() {
             <span className="bg-[#C6FF3D] text-[#0A0A0A] font-black px-2 py-0.5 text-xs font-mono tracking-widest">
               SNITCH // OS
             </span>
-            <span className="text-xs font-mono text-[#737373]">SYS_CORE v2.4</span>
+            <span className="text-xs font-mono text-[#737373]">
+              SYS_CORE v2.4
+            </span>
           </div>
-          <span className="font-mono text-xs text-[#737373] tracking-wider">[SEC_TIER: RBAC_4]</span>
+          <span className="font-mono text-xs text-[#737373] tracking-wider">
+            [SEC_TIER: RBAC_4]
+          </span>
         </div>
 
         {/* Center Big Typography */}
@@ -85,12 +116,16 @@ export default function Login() {
             // WORKSPACE ACCESS PROTOCOL
           </div>
           <h1 className="font-['Bebas_Neue','Oswald'] text-8xl xl:text-9xl tracking-tight leading-[0.88] text-[#F5F5F2] uppercase">
-            COLLABORATE<br />
-            <span className="text-[#C6FF3D]">SHIP CODE</span><br />
+            COLLABORATE
+            <br />
+            <span className="text-[#C6FF3D]">SHIP CODE</span>
+            <br />
             REPEAT.
           </h1>
           <p className="mt-6 text-[#A3A3A3] text-sm max-w-md font-sans leading-relaxed">
-            High-velocity project management platform built for agile execution. Strict role-based isolation, optimistic task concurrency, and real-time auditability.
+            High-velocity project management platform built for agile execution.
+            Strict role-based isolation, optimistic task concurrency, and
+            real-time auditability.
           </p>
         </div>
 
@@ -110,7 +145,9 @@ export default function Login() {
               <span className="bg-[#C6FF3D] text-[#0A0A0A] font-black px-2 py-0.5 text-xs font-mono tracking-widest">
                 SNITCH // OS
               </span>
-              <span className="text-xs font-mono text-[#737373]">SYS_CORE v2.4</span>
+              <span className="text-xs font-mono text-[#737373]">
+                SYS_CORE v2.4
+              </span>
             </div>
             <span className="font-mono text-[10px] bg-[#0A0A0A] text-[#C6FF3D] px-1.5 py-0.5 font-bold">
               PORT: 4000
@@ -129,7 +166,11 @@ export default function Login() {
             <span className="h-3 w-3 bg-[#C6FF3D] border border-black inline-block"></span>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5"
+            noValidate
+          >
             <div>
               <label
                 htmlFor="email"
