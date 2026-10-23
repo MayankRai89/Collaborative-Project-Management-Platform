@@ -24,6 +24,7 @@ const access = [loadTask, loadProject("projectId")];
 
 router.get("/:id", access, getTask);
 router.patch("/:id", access, updateTask);
+router.put("/:id", access, updateTask);
 router.delete(
   "/:id",
   access,
