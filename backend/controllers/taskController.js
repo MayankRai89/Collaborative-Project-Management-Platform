@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Task = require("../models/TaskModel");
 const ProjectMember = require("../models/ProjectMemberModel");
+const Comment = require("../models/CommentModel");
 const { STATUSES, PRIORITIES } = Task;
 
 const MANAGER_FIELDS = [
@@ -27,7 +28,7 @@ const archivedGuard = (req, res) => {
   }
   return false;
 };
-const Comment = require("../models/CommentModel");
+
 // An assignee must be an ACTIVE project manager or team member OF THIS PROJECT (never a viewer)
 const validateAssignee = async (projectId, assigneeId) => {
   if (typeof assigneeId !== "string" || !mongoose.isValidObjectId(assigneeId))
@@ -263,7 +264,7 @@ exports.deleteTask = async (req, res, next) => {
   try {
     if (archivedGuard(req, res)) return;
 
-    // TODO Step 8: also delete this task's comments here
+    await Comment.deleteMany({ task: req.task._id });
     await req.task.deleteOne();
     res.json({ message: "Task deleted" });
   } catch (err) {

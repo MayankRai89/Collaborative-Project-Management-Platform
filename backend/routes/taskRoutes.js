@@ -11,21 +11,33 @@ const {
   updateTask,
   deleteTask,
 } = require("../controllers/taskController");
+const {
+  listComments,
+  createComment,
+} = require("../controllers/commentController");
 
 router.use(authMiddleware);
 
 router.get("/mine", listMyTasks); // declared BEFORE '/:id'
 
-// loadTask finds the task, loadProject checks the caller belongs to its project
 const access = [loadTask, loadProject("projectId")];
 
 router.get("/:id", access, getTask);
-router.patch("/:id", access, updateTask); // field-level permissions are inside the controller
+router.patch("/:id", access, updateTask);
 router.delete(
   "/:id",
   access,
   requireProjectRole("admin", "project_manager"),
   deleteTask,
+);
+
+// Comments live under their task
+router.get("/:id/comments", access, listComments);
+router.post(
+  "/:id/comments",
+  access,
+  requireProjectRole("admin", "project_manager", "team_member"),
+  createComment,
 );
 
 module.exports = router;
