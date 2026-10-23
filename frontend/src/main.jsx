@@ -15,8 +15,10 @@ const queryClient = new QueryClient({
   // If any request comes back 401 (token expired, or the account was deactivated), treat the user as logged out
   queryCache: new QueryCache({
     onError: (err) => {
-      if (err instanceof ApiError && err.status === 401)
+      if (err instanceof ApiError && err.status === 401) {
+        localStorage.removeItem("token");
         queryClient.setQueryData(["me"], null);
+      }
     },
   }),
   defaultOptions: {

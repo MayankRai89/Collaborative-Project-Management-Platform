@@ -63,6 +63,7 @@ export default function TaskDetail() {
   const { data: commentsRes, isLoading: isCommentsLoading } = useQuery({
     queryKey: ["task-comments", id],
     queryFn: () => api.get(`/tasks/${id}/comments`),
+    enabled: !!task && !taskError,
   });
 
   const comments = commentsRes?.data || [];

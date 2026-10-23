@@ -12,7 +12,10 @@ export default function AuthProvider({ children }) {
       try {
         return (await api.get("/auth/me")).user;
       } catch (err) {
-        if (err instanceof ApiError && err.status === 401) return null; // simply not logged in
+        if (err instanceof ApiError && err.status === 401) {
+          localStorage.removeItem("token");
+          return null; // simply not logged in
+        }
         throw err;
       }
     },
