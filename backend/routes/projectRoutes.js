@@ -19,6 +19,10 @@ const {
   listProjectTasks,
   createTask,
 } = require("../controllers/taskController");
+const {
+  listProjectUpdates,
+  createProjectUpdate,
+} = require("../controllers/commentController");
 
 router.use(authMiddleware);
 
@@ -30,6 +34,10 @@ router.post(
   requireProjectRole("admin", "project_manager"),
   createTask,
 );
+
+// Tier A: Project Updates (Admin <-> Project Manager)
+router.get("/:id/updates", loadProject(), listProjectUpdates);
+router.post("/:id/updates", loadProject(), createProjectUpdate);
 
 router.get("/", listProjects); // filtered by membership inside the controller
 router.post("/", requireRole("admin"), createProject);
