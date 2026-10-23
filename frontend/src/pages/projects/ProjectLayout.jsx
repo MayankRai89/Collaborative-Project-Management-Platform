@@ -509,7 +509,7 @@ export default function ProjectLayout() {
                   <option value="">SELECT A PROJECT MANAGER...</option>
                   {projectManagers.map((pm) => (
                     <option key={pm._id} value={pm._id}>
-                      {pm.name} ({pm.email})
+                      {pm.name} ({pm.email}) [{pm.role?.toUpperCase()}]
                     </option>
                   ))}
                 </select>
