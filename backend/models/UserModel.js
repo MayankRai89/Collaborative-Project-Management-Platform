@@ -39,13 +39,8 @@ userSchema.set("toJSON", {
   },
 });
 
-const ProjectManager = mongoose.model("ProjectManager", userSchema);
-const TeamMember = mongoose.model("TeamMember", userSchema);
-const Viewer = mongoose.model("Viewer", userSchema);
-const Admin = mongoose.model("Admin", userSchema);
+const User = mongoose.model("User", userSchema);
 
-module.exports = ProjectManager;
-module.exports.TeamMember = TeamMember;
-module.exports.Viewer = Viewer;
-module.exports.Admin = Admin;
+module.exports = User;
 module.exports.ROLES = ROLES;
+
