@@ -2,11 +2,20 @@ import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../utils/api";
+import { useAuth } from "../../utils/auth";
 import { UserPlus, Trash2, X, Shield, Search } from "lucide-react";
 
 export default function ProjectTeam() {
-  const { project, canManage } = useOutletContext();
+  const { project, myRole, canManage: outletCanManage } = useOutletContext();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Management controls enabled for Admin or Project Manager
+  const isManagerOrAdmin =
+    user?.role === "admin" ||
+    user?.systemRole === "admin" ||
+    myRole === "project_manager" ||
+    outletCanManage;
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [userQuery, setUserQuery] = useState("");
@@ -19,19 +28,51 @@ export default function ProjectTeam() {
     queryFn: () => api.get(`/projects/${project._id}/members`),
   });
 
+  const members = membersRes?.data || [];
+  const existingUserIds = new Set(members.map((m) => m.user?._id || m.user));
+
+  // If Admin, fetch all users; if PM, use search lookup
+  const { data: adminUsersRes } = useQuery({
+    queryKey: ["admin-all-users"],
+    queryFn: () => api.get("/users?limit=100"),
+    enabled: isAddModalOpen && (user?.role === "admin" || user?.systemRole === "admin"),
+  });
+
   const { data: searchResults, isFetching: isSearching } = useQuery({
     queryKey: ["user-lookup", userQuery],
     queryFn: () => api.get(`/users/lookup?search=${encodeURIComponent(userQuery)}`),
-    enabled: userQuery.trim().length >= 2,
+    enabled: isAddModalOpen && userQuery.trim().length >= 2,
   });
+
+  // Calculate available candidates not already in this project
+  let candidateUsers = [];
+  if (user?.role === "admin" || user?.systemRole === "admin") {
+    const allUsers = adminUsersRes?.data || [];
+    candidateUsers = allUsers.filter(
+      (u) => u.isActive && !existingUserIds.has(u._id) && u.role !== "admin"
+    );
+    if (userQuery.trim()) {
+      const q = userQuery.toLowerCase();
+      candidateUsers = candidateUsers.filter(
+        (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
+    }
+  } else {
+    candidateUsers = (searchResults?.data || []).filter(
+      (u) => !existingUserIds.has(u._id)
+    );
+  }
 
   const addMemberMutation = useMutation({
     mutationFn: (payload) => api.post(`/projects/${project._id}/members`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-members", project._id] });
+      queryClient.invalidateQueries({ queryKey: ["project", project._id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
       setIsAddModalOpen(false);
       setUserQuery("");
       setSelectedUser(null);
+      setSelectedRole("team_member");
       setErrorMsg("");
     },
     onError: (err) => {
@@ -44,6 +85,11 @@ export default function ProjectTeam() {
       api.patch(`/projects/${project._id}/members/${userId}`, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-members", project._id] });
+      queryClient.invalidateQueries({ queryKey: ["project", project._id] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+    onError: (err) => {
+      alert(err.message || "Failed to update member role");
     },
   });
 
@@ -53,9 +99,10 @@ export default function ProjectTeam() {
       queryClient.invalidateQueries({ queryKey: ["project-members", project._id] });
       queryClient.invalidateQueries({ queryKey: ["project-tasks", project._id] });
     },
+    onError: (err) => {
+      alert(err.message || "Failed to remove member");
+    },
   });
-
-  const members = membersRes?.data || [];
 
   const handleAddMember = (e) => {
     e.preventDefault();
@@ -79,13 +126,18 @@ export default function ProjectTeam() {
           </p>
         </div>
 
-        {canManage && (
+        {isManagerOrAdmin && (
           <button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setIsAddModalOpen(true);
+              setErrorMsg("");
+              setSelectedUser(null);
+              setUserQuery("");
+            }}
             className="flex items-center gap-2 border border-black bg-[#0A0A0A] text-white px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all"
           >
             <UserPlus className="h-4 w-4" />
-            <span>ADD MEMBER</span>
+            <span>+ ADD MEMBER</span>
           </button>
         )}
       </div>
@@ -98,76 +150,84 @@ export default function ProjectTeam() {
       ) : members.length === 0 ? (
         <div className="border border-dashed border-[#0A0A0A] bg-white p-12 text-center">
           <p className="font-['Bebas_Neue','Oswald'] text-2xl text-[#0A0A0A] uppercase tracking-wider">
-            // ROSTER EMPTY
+            // NO OPERATIVES ATTACHED TO THIS UNIT
           </p>
           <p className="text-xs font-mono text-[#737373] mt-2">
-            NO ADDITIONAL OPERATIVES ASSIGNED TO THIS PROJECT NODE.
+            ASSIGN TEAM MEMBERS TO BEGIN TASK DISTRIBUTION.
           </p>
         </div>
       ) : (
-        <div className="border border-[#0A0A0A] bg-white overflow-x-auto shadow-[3px_3px_0px_0px_#0A0A0A]">
-          <table className="w-full text-left text-xs font-mono border-collapse">
+        <div className="border border-[#0A0A0A] bg-white shadow-[4px_4px_0px_0px_#0A0A0A] overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs font-mono">
             <thead>
-              <tr className="border-b border-[#0A0A0A] bg-[#0A0A0A] text-[#F5F5F2]">
-                <th className="p-3.5 uppercase font-bold tracking-wider">OPERATIVE</th>
-                <th className="p-3.5 uppercase font-bold tracking-wider">EMAIL</th>
-                <th className="p-3.5 uppercase font-bold tracking-wider">PROJECT ROLE</th>
-                <th className="p-3.5 uppercase font-bold tracking-wider text-right">ACTION</th>
+              <tr className="border-b border-[#0A0A0A] bg-[#FAF9F5] text-[#737373] uppercase">
+                <th className="p-3.5">OPERATIVE</th>
+                <th className="p-3.5">EMAIL</th>
+                <th className="p-3.5">ASSIGNED ROLE</th>
+                {isManagerOrAdmin && <th className="p-3.5 text-right">ACTIONS</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E5E5E0]">
               {members.map((m) => {
                 const isProjectManager = m.role === "project_manager";
                 return (
-                  <tr key={m.user._id} className="hover:bg-[#FAF9F5] transition-colors">
+                  <tr key={m._id} className="hover:bg-[#FAF9F5] transition-colors">
                     <td className="p-3.5 font-bold text-[#0A0A0A] flex items-center gap-2">
-                      <div className="h-6 w-6 bg-[#0A0A0A] text-[#C6FF3D] font-bold flex items-center justify-center text-[10px] border border-black">
-                        {m.user.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span>{m.user.name}</span>
+                      {isProjectManager ? (
+                        <Shield className="h-4 w-4 text-[#C6FF3D] fill-black shrink-0" />
+                      ) : (
+                        <div className="h-2 w-2 rounded-full bg-[#0A0A0A] shrink-0" />
+                      )}
+                      <span>{m.user?.name || "Operative"}</span>
                     </td>
-                    <td className="p-3.5 text-[#737373]">{m.user.email}</td>
+                    <td className="p-3.5 text-[#737373]">{m.user?.email || "N/A"}</td>
                     <td className="p-3.5">
-                      {canManage && m.role !== "project_manager" ? (
+                      {isManagerOrAdmin ? (
                         <select
                           value={m.role}
                           onChange={(e) =>
                             updateRoleMutation.mutate({
-                              userId: m.user._id,
+                              userId: m.user?._id || m.user,
                               role: e.target.value,
                             })
                           }
                           className="border border-[#0A0A0A] bg-white px-2.5 py-1 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                         >
+                          <option value="project_manager">PROJECT MANAGER</option>
                           <option value="team_member">TEAM MEMBER</option>
                           <option value="viewer">VIEWER</option>
                         </select>
                       ) : (
-                        <span className="border border-[#0A0A0A] px-2 py-0.5 text-[10px] uppercase font-bold bg-[#C6FF3D] text-[#0A0A0A]">
+                        <span
+                          className={`border border-[#0A0A0A] px-2 py-0.5 text-[10px] uppercase font-bold ${
+                            isProjectManager ? "bg-[#C6FF3D] text-[#0A0A0A]" : "bg-[#F5F5F2]"
+                          }`}
+                        >
                           {m.role.replace("_", " ")}
                         </span>
                       )}
                     </td>
-                    <td className="p-3.5 text-right">
-                      {canManage && (
+                    {isManagerOrAdmin && (
+                      <td className="p-3.5 text-right">
                         <button
                           onClick={() => {
                             if (
                               window.confirm(
-                                `Remove ${m.user.name} from project? Their assigned tasks will be reset to unassigned.`
+                                `Remove ${m.user?.name} from project? Any tasks assigned to them will be set to unassigned.`
                               )
                             ) {
-                              removeMemberMutation.mutate(m.user._id);
+                              removeMemberMutation.mutate(m.user?._id || m.user);
                             }
                           }}
                           disabled={removeMemberMutation.isPending}
-                          className="text-[#EF4444] hover:text-black p-1 transition-colors"
+                          className="border border-[#EF4444] text-[#EF4444] hover:bg-[#EF4444] hover:text-white px-2 py-1 text-[10px] font-mono font-bold uppercase transition-colors"
                           title="Remove Member"
                         >
-                          <Trash2 className="h-4 w-4 inline" />
+                          <Trash2 className="h-3.5 w-3.5 inline mr-1" />
+                          <span>REMOVE</span>
                         </button>
-                      )}
-                    </td>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -201,13 +261,13 @@ export default function ProjectTeam() {
             <form onSubmit={handleAddMember} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono font-bold uppercase mb-1">
-                  SEARCH USER (MIN 2 CHARS)
+                  AVAILABLE USERS (SELECT OPERATIVE)
                 </label>
-                <div className="relative">
+                <div className="relative mb-2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#737373]" />
                   <input
                     type="text"
-                    placeholder="NAME OR EMAIL..."
+                    placeholder="FILTER BY NAME OR EMAIL..."
                     value={userQuery}
                     onChange={(e) => {
                       setUserQuery(e.target.value);
@@ -219,13 +279,14 @@ export default function ProjectTeam() {
 
                 {/* Candidate list */}
                 {isSearching && (
-                  <div className="text-[11px] font-mono text-[#737373] mt-1.5">
-                    SEARCHING REGISTRY...
+                  <div className="text-[11px] font-mono text-[#737373] mb-1.5">
+                    SEARCHING DIRECTORY...
                   </div>
                 )}
-                {searchResults?.data && searchResults.data.length > 0 && !selectedUser && (
-                  <div className="mt-2 border border-black max-h-40 overflow-y-auto divide-y divide-[#E5E5E0] bg-[#FAF9F5]">
-                    {searchResults.data.map((u) => (
+
+                {candidateUsers.length > 0 && !selectedUser && (
+                  <div className="border border-black max-h-48 overflow-y-auto divide-y divide-[#E5E5E0] bg-[#FAF9F5]">
+                    {candidateUsers.map((u) => (
                       <button
                         key={u._id}
                         type="button"
@@ -236,22 +297,29 @@ export default function ProjectTeam() {
                           <div className="font-bold">{u.name}</div>
                           <div className="text-[10px] text-[#737373]">{u.email}</div>
                         </div>
-                        <span className="text-[10px] border border-black px-1.5 py-0.5">
+                        <span className="text-[10px] border border-black px-1.5 py-0.5 uppercase font-bold">
                           SELECT
                         </span>
                       </button>
                     ))}
                   </div>
                 )}
+
+                {candidateUsers.length === 0 && !selectedUser && userQuery.length >= 2 && (
+                  <div className="text-xs font-mono text-[#737373] p-2 border border-dashed border-[#E5E5E0] text-center">
+                    NO UNASSIGNED USERS FOUND MATCHING CRITERIA.
+                  </div>
+                )}
+
                 {selectedUser && (
-                  <div className="mt-2 p-2 border border-black bg-[#C6FF3D] text-[#0A0A0A] flex items-center justify-between text-xs font-mono font-bold">
+                  <div className="p-2.5 border border-black bg-[#C6FF3D] text-[#0A0A0A] flex items-center justify-between text-xs font-mono font-bold">
                     <span>
                       SELECTED: {selectedUser.name} ({selectedUser.email})
                     </span>
                     <button
                       type="button"
                       onClick={() => setSelectedUser(null)}
-                      className="text-black hover:underline"
+                      className="text-black underline text-[11px] hover:opacity-75"
                     >
                       CHANGE
                     </button>
@@ -269,6 +337,7 @@ export default function ProjectTeam() {
                   className="w-full border border-black p-2.5 text-xs font-mono bg-white outline-none focus:ring-2 focus:ring-[#C6FF3D]"
                 >
                   <option value="team_member">TEAM MEMBER</option>
+                  <option value="project_manager">PROJECT MANAGER</option>
                   <option value="viewer">VIEWER</option>
                 </select>
               </div>
