@@ -323,9 +323,16 @@ export default function TaskDetail() {
               </div>
 
               <div>
-                <label className="block text-xs font-mono font-bold uppercase mb-1.5">
-                  ASSIGNED OPERATIVE
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-mono font-bold uppercase">
+                    ASSIGNED OPERATIVE
+                  </label>
+                  {isAssignee && (
+                    <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1.5 py-0.2 text-[9px] font-mono font-bold border border-black uppercase">
+                      ⚡ ASSIGNED TO YOU
+                    </span>
+                  )}
+                </div>
                 <select
                   value={assigneeId}
                   onChange={(e) => setAssigneeId(e.target.value)}
@@ -339,7 +346,7 @@ export default function TaskDetail() {
                     .filter((m) => m.role !== "viewer" && m.user?.isActive)
                     .map((m) => (
                       <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
-                        {m.user?.name || "Operative"} ({m.user?.email || ""})
+                        {m.user?.name || "Operative"} ({m.user?.email || ""}) [{m.role.replace("_", " ").toUpperCase()}]
                       </option>
                     ))}
                 </select>

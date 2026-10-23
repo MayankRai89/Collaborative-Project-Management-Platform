@@ -347,10 +347,17 @@ export default function ProjectTasks() {
             <tbody className="divide-y divide-[#E5E5E0]">
               {filteredTasks.map((t) => {
                 const isEditableStatus = canEditStatus(t);
+                const isAssignedToMe =
+                  t.assignee?._id === user?._id || t.assignee === user?._id;
+
                 return (
                   <tr
                     key={t._id}
-                    className="hover:bg-[#FAF9F5] transition-colors group"
+                    className={`transition-colors group ${
+                      isAssignedToMe
+                        ? "bg-[#F8FFF0] hover:bg-[#F0FFDB]"
+                        : "hover:bg-[#FAF9F5]"
+                    }`}
                   >
                     <td className="p-3.5 text-[#737373] font-mono">
                       <Link to={`/tasks/${t._id}`} className="hover:underline font-bold text-black">
@@ -358,12 +365,19 @@ export default function ProjectTasks() {
                       </Link>
                     </td>
                     <td className="p-3.5">
-                      <Link
-                        to={`/tasks/${t._id}`}
-                        className="font-bold text-[#0A0A0A] group-hover:underline block"
-                      >
-                        {t.title}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/tasks/${t._id}`}
+                          className="font-bold text-[#0A0A0A] group-hover:underline block"
+                        >
+                          {t.title}
+                        </Link>
+                        {isAssignedToMe && (
+                          <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1.5 py-0.2 text-[9px] font-mono font-bold border border-black uppercase shrink-0">
+                            ⚡ YOU
+                          </span>
+                        )}
+                      </div>
                       {t.description && (
                         <p className="text-[11px] text-[#737373] line-clamp-1 mt-0.5">
                           {t.description}
@@ -401,25 +415,39 @@ export default function ProjectTasks() {
                     </td>
                     <td className="p-3.5">
                       {canManage ? (
-                        <select
-                          value={t.assignee?._id || t.assignee || ""}
-                          onChange={(e) => handleInlineAssigneeChange(t, e.target.value)}
-                          disabled={updateTaskMutation.isPending}
-                          className="border border-[#0A0A0A] bg-white px-2 py-1 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D] max-w-[180px]"
-                        >
-                          <option value="">UNASSIGNED</option>
-                          {members
-                            .filter((m) => m.role !== "viewer" && m.user?.isActive)
-                            .map((m) => (
-                              <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
-                                {m.user?.name || "Operative"}
-                              </option>
-                            ))}
-                        </select>
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={t.assignee?._id || t.assignee || ""}
+                            onChange={(e) => handleInlineAssigneeChange(t, e.target.value)}
+                            disabled={updateTaskMutation.isPending}
+                            className="border border-[#0A0A0A] bg-white px-2 py-1 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D] max-w-[180px]"
+                          >
+                            <option value="">UNASSIGNED</option>
+                            {members
+                              .filter((m) => m.role !== "viewer" && m.user?.isActive)
+                              .map((m) => (
+                                <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
+                                  {m.user?.name || "Operative"} [{m.role.replace("_", " ").toUpperCase()}]
+                                </option>
+                              ))}
+                          </select>
+                          {isAssignedToMe && (
+                            <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1 py-0.5 text-[9px] font-mono font-bold border border-black uppercase shrink-0">
+                              YOU
+                            </span>
+                          )}
+                        </div>
                       ) : (
-                        <span className="text-[#737373]">
-                          {t.assignee?.name || <span className="italic">UNASSIGNED</span>}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={isAssignedToMe ? "font-bold text-black" : "text-[#737373]"}>
+                            {t.assignee?.name || <span className="italic">UNASSIGNED</span>}
+                          </span>
+                          {isAssignedToMe && (
+                            <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1.5 py-0.5 text-[9px] font-mono font-bold border border-black uppercase shrink-0">
+                              YOU
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="p-3.5 text-right font-mono text-[10px] text-[#737373]">
@@ -463,11 +491,26 @@ export default function ProjectTasks() {
                   ) : (
                     colTasks.map((t) => {
                       const isEditableStatus = canEditStatus(t);
+                      const isAssignedToMe =
+                        t.assignee?._id === user?._id || t.assignee === user?._id;
+
                       return (
                         <div
                           key={t._id}
-                          className="border border-[#0A0A0A] bg-[#F5F5F2] p-4 transition-all"
+                          className={`border border-[#0A0A0A] p-4 transition-all relative ${
+                            isAssignedToMe
+                              ? "bg-[#FAFFF2] border-l-4 border-l-[#C6FF3D] shadow-[2px_2px_0px_0px_#0A0A0A]"
+                              : "bg-[#F5F5F2] hover:border-[#C6FF3D]"
+                          }`}
                         >
+                          {isAssignedToMe && (
+                            <div className="mb-2">
+                              <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1.5 py-0.5 text-[9px] font-mono font-bold border border-black uppercase">
+                                ⚡ ASSIGNED TO YOU
+                              </span>
+                            </div>
+                          )}
+
                           <div className="flex items-center justify-between text-[10px] font-mono mb-2">
                             <Link
                               to={`/tasks/${t._id}`}
@@ -524,21 +567,28 @@ export default function ProjectTasks() {
                                 <select
                                   value={t.assignee?._id || t.assignee || ""}
                                   onChange={(e) => handleInlineAssigneeChange(t, e.target.value)}
-                                  className="border border-black bg-white px-1.5 py-0.5 text-[10px] font-mono uppercase outline-none max-w-[120px]"
+                                  className="border border-black bg-white px-1.5 py-0.5 text-[10px] font-mono uppercase outline-none max-w-[130px]"
                                 >
                                   <option value="">UNASSIGNED</option>
                                   {members
                                     .filter((m) => m.role !== "viewer" && m.user?.isActive)
                                     .map((m) => (
                                       <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
-                                        {m.user?.name || "Operative"}
+                                        {m.user?.name || "Operative"} [{m.role.replace("_", " ").toUpperCase()}]
                                       </option>
                                     ))}
                                 </select>
                               ) : (
-                                <span className="text-[10px] text-[#737373] truncate max-w-[120px]">
-                                  {t.assignee?.name || "UNASSIGNED"}
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className={`text-[10px] truncate max-w-[100px] ${isAssignedToMe ? "font-bold text-black" : "text-[#737373]"}`}>
+                                    {t.assignee?.name || "UNASSIGNED"}
+                                  </span>
+                                  {isAssignedToMe && (
+                                    <span className="bg-[#C6FF3D] text-[#0A0A0A] px-1 py-0.2 text-[8px] font-mono font-bold border border-black uppercase">
+                                      YOU
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
 

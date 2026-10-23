@@ -105,9 +105,12 @@ export default function Dashboard() {
             <h2 className="font-['Bebas_Neue','Oswald'] text-2xl tracking-wider uppercase text-[#0A0A0A]">
               MY TASKS // ACTION REQUIRED
             </h2>
-            <span className="text-xs font-mono font-bold text-[#737373]">
-              [{tasks.length} VISIBLE]
-            </span>
+            <Link
+              to="/tasks"
+              className="text-xs font-mono font-bold bg-[#0A0A0A] text-[#C6FF3D] px-2.5 py-1 uppercase hover:bg-[#C6FF3D] hover:text-black border border-black transition-colors"
+            >
+              VIEW ALL MY TASKS &rarr;
+            </Link>
           </div>
 
           {loadingTasks ? (
