@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 const Task = require("../models/TaskModel");
+const User = require("../models/UserModel");
+const Project = require("../models/ProjectModel");
 const ProjectMember = require("../models/ProjectMemberModel");
 const Comment = require("../models/CommentModel");
 const { STATUSES, PRIORITIES } = Task;
@@ -29,16 +31,30 @@ const archivedGuard = (req, res) => {
   return false;
 };
 
-// An assignee must be an ACTIVE project manager or team member OF THIS PROJECT (never a viewer)
+// An assignee must be an ACTIVE user who is the project manager, a team member, or admin
 const validateAssignee = async (projectId, assigneeId) => {
   if (typeof assigneeId !== "string" || !mongoose.isValidObjectId(assigneeId))
     return null;
+
+  const targetUser = await User.findById(assigneeId);
+  if (!targetUser || !targetUser.isActive) return null;
+
+  // System admin can always be assigned
+  if (targetUser.role === "admin") return targetUser._id;
+
+  // Project manager can always be assigned
+  const project = await Project.findById(projectId);
+  if (project?.manager && project.manager.equals(targetUser._id)) {
+    return targetUser._id;
+  }
+
+  // Active squad member with manager or team member role
   const membership = await ProjectMember.findOne({
     project: projectId,
     user: assigneeId,
     role: { $in: ["project_manager", "team_member"] },
-  }).populate("user", "isActive");
-  return membership?.user?.isActive ? membership.user._id : null;
+  });
+  return membership ? targetUser._id : null;
 };
 
 const buildTaskFilter = (query, userId) => {
