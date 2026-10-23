@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, ROLE_LABELS } from "../../utils/auth";
 import {
   LayoutDashboard,
@@ -14,6 +15,7 @@ import {
   Layers,
   Eye,
   CheckSquare,
+  Repeat,
 } from "lucide-react";
 
 const ROLE_BADGE_STYLE = {
@@ -23,10 +25,36 @@ const ROLE_BADGE_STYLE = {
   viewer: "bg-transparent text-[#737373] border border-dashed border-[#737373]",
 };
 
+const SIMULATION_USERS = [
+  { label: "ADMIN (Global)", email: "admin@example.com", password: "Admin@123", role: "admin" },
+  { label: "PROJECT MANAGER", email: "pm@example.com", password: "Manager@123", role: "project_manager" },
+  { label: "MEMBER (Aisha)", email: "aisha@example.com", password: "Member@123", role: "team_member" },
+  { label: "MEMBER (Alex)", email: "member@example.com", password: "Member@123", role: "team_member" },
+];
+
 export default function DashboardLayout({ children, title, subtitle }) {
-  const { user, logout } = useAuth();
+  const { user, login, logout } = useAuth();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
+
+  const handleRoleSwitch = async (e) => {
+    const email = e.target.value;
+    if (!email || email === user?.email) return;
+    const target = SIMULATION_USERS.find((u) => u.email === email);
+    if (!target) return;
+
+    setIsSwitchingRole(true);
+    try {
+      await login(target.email, target.password);
+      queryClient.clear();
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to switch role:", err);
+      setIsSwitchingRole(false);
+    }
+  };
 
   // Close mobile drawer on route transition
   useEffect(() => {
@@ -138,8 +166,29 @@ export default function DashboardLayout({ children, title, subtitle }) {
             </div>
           </div>
 
-          {/* Top Bar Right: Role Badge & Quick User Info & Logout */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Top Bar Right: Role Switcher & Role Badge & User & Logout */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+            {/* Quick Role Switcher */}
+            <div className="flex items-center gap-1.5 border border-[#0A0A0A] bg-[#F5F5F2] px-2 py-1 shadow-[2px_2px_0px_0px_#0A0A0A]">
+              <Repeat className={`h-3 w-3 text-[#0A0A0A] ${isSwitchingRole ? "animate-spin" : ""}`} />
+              <span className="text-[10px] font-mono font-bold text-[#737373] uppercase hidden md:inline">
+                SWITCH ROLE:
+              </span>
+              <select
+                value={user?.email || ""}
+                onChange={handleRoleSwitch}
+                disabled={isSwitchingRole}
+                className="bg-transparent text-[11px] font-mono font-bold uppercase text-[#0A0A0A] outline-none cursor-pointer"
+                title="Switch persona to test role-based capabilities"
+              >
+                {SIMULATION_USERS.map((u) => (
+                  <option key={u.email} value={u.email}>
+                    {u.label} {u.email === user?.email ? "★ ACTIVE" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <span
               className={`text-[10px] sm:text-xs font-mono font-bold px-2 py-1 uppercase tracking-wider sm:tracking-widest ${
                 ROLE_BADGE_STYLE[user?.role] || ROLE_BADGE_STYLE.viewer

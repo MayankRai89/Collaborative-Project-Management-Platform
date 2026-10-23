@@ -15,7 +15,8 @@ const schema = z.object({
 const DEMO_ACCOUNTS = [
   { label: "ADMIN", role: "admin", email: "admin@example.com", password: "Admin@123" },
   { label: "PROJECT MANAGER", role: "project_manager", email: "pm@example.com", password: "Manager@123" },
-  { label: "TEAM MEMBER", role: "team_member", email: "member@example.com", password: "Member@123" },
+  { label: "TEAM MEMBER (ALEX)", role: "team_member", email: "member@example.com", password: "Member@123" },
+  { label: "TEAM MEMBER (AISHA)", role: "team_member", email: "aisha@example.com", password: "Member@123" },
   { label: "VIEWER", role: "viewer", email: "viewer@example.com", password: "Viewer@123" },
 ];
 
