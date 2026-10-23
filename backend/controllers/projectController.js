@@ -6,11 +6,11 @@ const Comment = require("../models/CommentModel");
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Only active users with the project_manager role can be assigned as a project's manager
+// Any active user can be appointed as a project manager by an Admin
 const findValidManager = async (managerId) => {
+  if (!managerId) return null;
   const manager = await User.findById(managerId);
-  if (!manager || !manager.isActive || manager.role !== "project_manager")
-    return null;
+  if (!manager || !manager.isActive) return null;
   return manager;
 };
 
@@ -140,8 +140,12 @@ exports.createProject = async (req, res, next) => {
           .status(400)
           .json({
             message:
-              "managerId must be an active user with the project_manager role",
+              "managerId must be a valid active user",
           });
+      }
+      if (manager.role !== "admin" && manager.role !== "project_manager") {
+        manager.role = "project_manager";
+        await manager.save();
       }
     }
 
@@ -197,8 +201,13 @@ exports.assignManager = async (req, res, next) => {
         .status(400)
         .json({
           message:
-            "managerId must be an active user with the project_manager role",
+            "managerId must be a valid active user",
         });
+    }
+
+    if (manager.role !== "admin" && manager.role !== "project_manager") {
+      manager.role = "project_manager";
+      await manager.save();
     }
 
     const previousId = req.project.manager;
