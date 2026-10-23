@@ -227,17 +227,19 @@ export default function TaskDetail() {
             <h1 className="font-['Bebas_Neue','Oswald'] text-4xl text-[#0A0A0A] uppercase leading-none">
               TASK SPECIFICATION
             </h1>
-            <button
-              onClick={() => {
-                if (window.confirm("Permanently delete this task and all comment history?")) {
-                  deleteTaskMutation.mutate();
-                }
-              }}
-              className="text-[#EF4444] hover:text-black p-1 transition-colors"
-              title="Delete Task"
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
+            {canManage && (
+              <button
+                onClick={() => {
+                  if (window.confirm("Permanently delete this task and all comment history?")) {
+                    deleteTaskMutation.mutate();
+                  }
+                }}
+                className="text-[#EF4444] hover:text-black p-1 transition-colors"
+                title="Delete Task"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSave} className="space-y-6">
@@ -249,7 +251,10 @@ export default function TaskDetail() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full border border-black p-3 text-sm font-bold font-sans outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                disabled={!canEdit}
+                className={`w-full border border-black p-3 text-sm font-bold font-sans outline-none focus:ring-2 focus:ring-[#C6FF3D] ${
+                  !canEdit ? "bg-[#F5F5F2] cursor-not-allowed text-[#737373]" : "bg-white"
+                }`}
                 required
               />
             </div>
@@ -262,7 +267,10 @@ export default function TaskDetail() {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full border border-black p-2.5 text-xs font-mono bg-white uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                  disabled={!canEdit}
+                  className={`w-full border border-black p-2.5 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D] ${
+                    !canEdit ? "bg-[#F5F5F2] cursor-not-allowed text-[#737373]" : "bg-white"
+                  }`}
                 >
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -279,7 +287,10 @@ export default function TaskDetail() {
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full border border-black p-2.5 text-xs font-mono bg-white uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                  disabled={!canManage}
+                  className={`w-full border border-black p-2.5 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D] ${
+                    !canManage ? "bg-[#F5F5F2] cursor-not-allowed text-[#737373]" : "bg-white"
+                  }`}
                 >
                   {PRIORITY_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -298,7 +309,10 @@ export default function TaskDetail() {
                 rows={6}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full border border-black p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+                disabled={!canEdit}
+                className={`w-full border border-black p-3 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D] ${
+                  !canEdit ? "bg-[#F5F5F2] cursor-not-allowed text-[#737373]" : "bg-white"
+                }`}
                 placeholder="DETAILED SPECS..."
               />
             </div>
@@ -308,13 +322,19 @@ export default function TaskDetail() {
                 LAST UPDATED: {new Date(task.updatedAt || Date.now()).toLocaleTimeString()}
               </div>
 
-              <button
-                type="submit"
-                disabled={updateMutation.isPending}
-                className="border border-black bg-[#0A0A0A] text-white px-6 py-2.5 text-xs font-mono font-bold uppercase tracking-widest hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all disabled:opacity-50"
-              >
-                {updateMutation.isPending ? "SAVING..." : "COMMIT CHANGES ->"}
-              </button>
+              {canEdit ? (
+                <button
+                  type="submit"
+                  disabled={updateMutation.isPending}
+                  className="border border-black bg-[#0A0A0A] text-white px-6 py-2.5 text-xs font-mono font-bold uppercase tracking-widest hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all disabled:opacity-50"
+                >
+                  {updateMutation.isPending ? "SAVING..." : "COMMIT CHANGES ->"}
+                </button>
+              ) : (
+                <span className="border border-[#737373] text-[#737373] px-3.5 py-2 text-[10px] font-mono font-bold uppercase bg-[#F5F5F2]">
+                  [READ-ONLY PRIVILEGES]
+                </span>
+              )}
             </div>
           </form>
         </div>
