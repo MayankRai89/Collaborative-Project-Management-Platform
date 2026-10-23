@@ -249,6 +249,37 @@ export default function ProjectTasks() {
             <option value="high">HIGH</option>
             <option value="urgent">URGENT</option>
           </select>
+
+          {/* Quick 1-click toggle for My Tasks */}
+          <button
+            type="button"
+            onClick={() => setAssigneeFilter(assigneeFilter === "me" ? "all" : "me")}
+            className={`border border-[#0A0A0A] px-3 py-2 text-xs font-mono font-bold uppercase transition-all flex items-center gap-1.5 ${
+              assigneeFilter === "me"
+                ? "bg-[#C6FF3D] text-[#0A0A0A] shadow-[2px_2px_0px_0px_#0A0A0A]"
+                : "bg-white text-[#0A0A0A] hover:bg-[#F5F5F2]"
+            }`}
+            title="Filter to tasks assigned directly to you"
+          >
+            <span>⚡ MY TASKS ({myTasksCount})</span>
+          </button>
+
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            className="border border-[#0A0A0A] bg-white px-3 py-2 text-xs font-mono uppercase outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+          >
+            <option value="all">ALL ASSIGNEES</option>
+            <option value="me">⚡ ASSIGNED TO ME ({myTasksCount})</option>
+            <option value="unassigned">UNASSIGNED</option>
+            {members
+              .filter((m) => m.role !== "viewer" && m.user?.isActive)
+              .map((m) => (
+                <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
+                  {m.user?.name || "Operative"} [{m.role.replace("_", " ").toUpperCase()}]
+                </option>
+              ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
