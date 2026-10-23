@@ -13,6 +13,7 @@ import {
   Briefcase,
   Layers,
   Eye,
+  CheckSquare,
 } from "lucide-react";
 
 const ROLE_BADGE_STYLE = {
@@ -35,13 +36,14 @@ export default function DashboardLayout({ children, title, subtitle }) {
   const navLinks = [
     { label: "01 // DASHBOARD", path: "/dashboard", icon: LayoutDashboard },
     { label: "02 // PROJECTS", path: "/projects", icon: FolderGit2 },
+    { label: "03 // MY TASKS", path: "/tasks", icon: CheckSquare },
   ];
 
   if (user?.role === "admin") {
-    navLinks.push({ label: "03 // USERS [ADMIN]", path: "/users", icon: Users });
+    navLinks.push({ label: "04 // USERS [ADMIN]", path: "/users", icon: Users });
   }
 
-  navLinks.push({ label: "04 // PROFILE", path: "/profile", icon: UserCheck });
+  navLinks.push({ label: "05 // PROFILE", path: "/profile", icon: UserCheck });
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F2] text-[#0A0A0A]">
