@@ -74,6 +74,15 @@ export default function TaskDetail() {
   const [priority, setPriority] = useState("medium");
   const [assigneeId, setAssigneeId] = useState("");
   const [commentText, setCommentText] = useState("");
+  const defaultCategory =
+    user?.role === "admin"
+      ? "admin_instruction"
+      : myRole === "project_manager"
+      ? "pm_directive"
+      : isAssignee
+      ? "progress_update"
+      : "general";
+  const [commentCategory, setCommentCategory] = useState(defaultCategory);
 
   // Conflict state (409)
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
@@ -121,9 +130,10 @@ export default function TaskDetail() {
     },
   });
 
-  // Post comment mutation
+  // Post comment mutation with category
   const postCommentMutation = useMutation({
-    mutationFn: (text) => api.post(`/tasks/${id}/comments`, { body: text }),
+    mutationFn: ({ body, category }) =>
+      api.post(`/tasks/${id}/comments`, { body, category }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", id] });
       setCommentText("");
