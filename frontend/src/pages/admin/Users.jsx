@@ -116,9 +116,7 @@ export default function Users() {
 
   const users = usersData?.data || [];
   const projects = projectsData?.data || [];
-  const projectManagers = users.filter(
-    (u) => u.isActive && u.role === "project_manager"
-  );
+  const projectManagers = users.filter((u) => u.isActive);
 
   return (
     <DashboardLayout
