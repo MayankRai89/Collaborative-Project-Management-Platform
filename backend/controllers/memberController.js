@@ -10,7 +10,7 @@ const unassignTasks = (projectId, userId) =>
   );
 
 // 'project_manager' is deliberately NOT here: it can only be set through PATCH /projects/:id/manager
-const ASSIGNABLE_ROLES = ["team_member", "viewer"];
+const ASSIGNABLE_ROLES = ["team_member", "viewer", "project_manager"];
 
 const archivedGuard = (req, res) => {
   if (req.project.status === "archived") {
@@ -30,7 +30,7 @@ const exceedsGlobalRole = (user, projectRole) =>
 exports.listMembers = async (req, res, next) => {
   try {
     const filter = { project: req.project._id };
-    if (ASSIGNABLE_ROLES.concat("project_manager").includes(req.query.role))
+    if (ASSIGNABLE_ROLES.includes(req.query.role))
       filter.role = req.query.role;
 
     const data = await ProjectMember.find(filter)
@@ -51,7 +51,7 @@ exports.addMember = async (req, res, next) => {
     const { userId, role } = req.body;
     if (!ASSIGNABLE_ROLES.includes(role)) {
       return res.status(400).json({
-        message: `role must be one of: ${ASSIGNABLE_ROLES.join(", ")}. Use PATCH /projects/:id/manager to set the manager.`,
+        message: `role must be one of: ${ASSIGNABLE_ROLES.join(", ")}`,
       });
     }
 
@@ -85,6 +85,12 @@ exports.addMember = async (req, res, next) => {
       user: user._id,
       role,
     });
+
+    if (role === "project_manager") {
+      req.project.manager = user._id;
+      await req.project.save();
+    }
+
     await member.populate("user", "name email role");
 
     res.status(201).json({ member });
@@ -114,12 +120,6 @@ exports.updateMemberRole = async (req, res, next) => {
         .status(404)
         .json({ message: "Member not found in this project" });
 
-    if (member.role === "project_manager") {
-      return res.status(400).json({
-        message: "Change the project manager with PATCH /projects/:id/manager",
-      });
-    }
-
     const user = await User.findById(member.user);
     if (exceedsGlobalRole(user, role)) {
       return res.status(400).json({
@@ -130,6 +130,19 @@ exports.updateMemberRole = async (req, res, next) => {
 
     member.role = role;
     await member.save();
+
+    if (role === "project_manager") {
+      req.project.manager = member.user;
+      await req.project.save();
+    } else if (
+      req.project.manager &&
+      req.project.manager.equals(member.user) &&
+      role !== "project_manager"
+    ) {
+      req.project.manager = null;
+      await req.project.save();
+    }
+
     if (role === "viewer") await unassignTasks(req.project._id, member.user); // viewers can't own tasks
     await member.populate("user", "name email role");
 
