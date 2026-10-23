@@ -8,12 +8,16 @@ const {
   updateUser,
   deactivateUser,
   updateMe,
+  lookupUsers,
 } = require("../controllers/userController");
 
-router.use(authMiddleware); // everything below needs a logged-in user
+router.use(authMiddleware);
 
 // Any logged-in user (declared BEFORE '/:id' so "me" isn't treated as an id)
 router.patch("/me", updateMe);
+
+// Admin or project manager (needs to find people to add to a project)
+router.get("/lookup", requireRole("admin", "project_manager"), lookupUsers);
 
 // Admin only
 router.use(requireRole("admin"));

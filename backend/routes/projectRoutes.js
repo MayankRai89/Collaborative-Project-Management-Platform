@@ -18,6 +18,7 @@ const {
 
 router.use(authMiddleware);
 
+router.use("/:id/members", require("./memberRoutes")); // <-- new
 router.get("/", listProjects); // filtered by membership inside the controller
 router.post("/", requireRole("admin"), createProject);
 

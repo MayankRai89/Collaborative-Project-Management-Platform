@@ -134,3 +134,28 @@ exports.updateMe = async (req, res, next) => {
     next(err);
   }
 };
+// GET /api/users/lookup?search=ra   (admin or project_manager) -> minimal fields only
+exports.lookupUsers = async (req, res, next) => {
+  try {
+    const search =
+      typeof req.query.search === "string" ? req.query.search.trim() : "";
+    if (search.length < 2) {
+      return res
+        .status(400)
+        .json({ message: "search must be at least 2 characters" });
+    }
+
+    const regex = new RegExp(escapeRegex(search), "i");
+    const data = await User.find({
+      isActive: true,
+      role: { $ne: "admin" },
+      $or: [{ name: regex }, { email: regex }],
+    })
+      .select("name email role")
+      .limit(10);
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+};
