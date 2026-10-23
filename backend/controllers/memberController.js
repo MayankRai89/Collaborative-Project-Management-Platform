@@ -1,5 +1,13 @@
 const ProjectMember = require("../models/ProjectMemberModel");
 const User = require("../models/UserModel");
+const Task = require("../models/TaskModel");
+
+// Bumping `version` means anyone currently editing one of these tasks gets a 409 and sees the change
+const unassignTasks = (projectId, userId) =>
+  Task.updateMany(
+    { project: projectId, assignee: userId },
+    { $set: { assignee: null }, $inc: { version: 1 } },
+  );
 
 // 'project_manager' is deliberately NOT here: it can only be set through PATCH /projects/:id/manager
 const ASSIGNABLE_ROLES = ["team_member", "viewer"];
@@ -17,14 +25,7 @@ const archivedGuard = (req, res) => {
 // A user's project role can never exceed their global role
 const exceedsGlobalRole = (user, projectRole) =>
   user.role === "viewer" && projectRole !== "viewer";
-const Task = require("../models/TaskModel");
 
-// Bumping `version` means anyone currently editing one of these tasks gets a 409 and sees the change
-const unassignTasks = (projectId, userId) =>
-  Task.updateMany(
-    { project: projectId, assignee: userId },
-    { $set: { assignee: null }, $inc: { version: 1 } },
-  );
 // GET /api/projects/:id/members?role=viewer   (any member, or admin)
 exports.listMembers = async (req, res, next) => {
   try {
@@ -129,6 +130,7 @@ exports.updateMemberRole = async (req, res, next) => {
 
     member.role = role;
     await member.save();
+    if (role === "viewer") await unassignTasks(req.project._id, member.user); // viewers can't own tasks
     await member.populate("user", "name email role");
 
     res.json({ member });
@@ -157,11 +159,10 @@ exports.removeMember = async (req, res, next) => {
       });
     }
 
-    // TODO Step 7: also unassign this user's tasks in this project here
+    await unassignTasks(req.project._id, member.user);
     await member.deleteOne();
     res.json({ message: "Member removed" });
   } catch (err) {
     next(err);
   }
 };
-await unassignTasks(req.project._id, member.user);

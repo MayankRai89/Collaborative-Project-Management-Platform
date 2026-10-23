@@ -1,6 +1,7 @@
 const Project = require("../models/ProjectModel");
 const ProjectMember = require("../models/ProjectMemberModel");
 const User = require("../models/UserModel");
+const Task = require("../models/TaskModel");
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -197,7 +198,8 @@ exports.restoreProject = async (req, res, next) => {
 exports.deleteProject = async (req, res, next) => {
   try {
     await ProjectMember.deleteMany({ project: req.project._id });
-    // TODO Step 7 and 8: also delete this project's tasks and comments here
+    await Task.deleteMany({ project: req.project._id });
+    // TODO Step 8: also delete this project's comments
     await req.project.deleteOne();
     res.json({ message: "Project deleted" });
   } catch (err) {
