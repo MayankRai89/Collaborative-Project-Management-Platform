@@ -132,7 +132,8 @@ npm run seed
 | :--- | :--- | :--- |
 | **Admin** | `admin@example.com` | `Admin@123` |
 | **Project Manager** | `pm@example.com` | `Manager@123` |
-| **Team Member** | `member@example.com` | `Member@123` |
+| **Team Member 1 (Rahul)** | `member@example.com` | `Member@123` |
+| **Team Member 2 (Aisha)** | `aisha@example.com` | `Member@123` |
 | **Viewer** | `viewer@example.com` | `Viewer@123` |
 
 ### 3. Start Development Server
