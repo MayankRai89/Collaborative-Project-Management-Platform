@@ -1,4 +1,6 @@
 const User = require("../models/UserModel");
+const ProjectMember = require("../models/ProjectMemberModel");
+const Task = require("../models/TaskModel");
 const { ROLES } = User;
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -27,8 +29,43 @@ exports.listUsers = async (req, res, next) => {
       User.countDocuments(filter),
     ]);
 
+    const userIds = data.map((u) => u._id);
+    const [memberships, tasks] = await Promise.all([
+      ProjectMember.find({ user: { $in: userIds } }).populate("project", "name status"),
+      Task.find({ assignee: { $in: userIds } })
+        .select("title status project version")
+        .populate("project", "name status"),
+    ]);
+
+    const usersWithAssignments = data.map((u) => {
+      const uObj = u.toObject();
+      const userMemberships = memberships.filter(
+        (m) => m.user && m.user.equals(u._id)
+      );
+      const userTasks = tasks.filter(
+        (t) => t.assignee && t.assignee.equals(u._id)
+      );
+      return {
+        ...uObj,
+        projects: userMemberships.map((m) => ({
+          _id: m.project?._id,
+          name: m.project?.name || "Untitled Project",
+          status: m.project?.status || "active",
+          role: m.role,
+        })),
+        tasks: userTasks.map((t) => ({
+          _id: t._id,
+          title: t.title,
+          status: t.status,
+          version: t.version,
+          projectId: t.project?._id,
+          projectName: t.project?.name || "Unknown Project",
+        })),
+      };
+    });
+
     res.json({
-      data,
+      data: usersWithAssignments,
       page,
       limit,
       total,
