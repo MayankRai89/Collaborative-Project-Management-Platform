@@ -16,8 +16,8 @@ export default function ProjectLayout() {
     queryFn: () => api.get(`/projects/${id}`),
   });
 
-  const project = projectRes?.data;
-  const myRole = project?.myRole || (user?.role === "admin" ? "admin" : "viewer");
+  const project = projectRes?.project || projectRes?.data;
+  const myRole = projectRes?.myRole || project?.myRole || (user?.role === "admin" ? "admin" : "viewer");
   const canManage = myRole === "admin" || myRole === "project_manager";
 
   const archiveMutation = useMutation({
