@@ -3,8 +3,6 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
-const apiRoutes = require("./src/routes");
-const { notFound, errorHandler } = require("./src/middleware/error.middleware");
 
 const app = express();
 
@@ -17,12 +15,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
-app.use("/api", apiRoutes);
-
-// Error Handling
-app.use(notFound);
-app.use(errorHandler);
+// Health check endpoint
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 const PORT = process.env.PORT || 4000;
 
