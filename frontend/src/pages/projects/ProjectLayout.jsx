@@ -14,6 +14,7 @@ import {
   Trash2,
   X,
   UserCheck,
+  MessageSquare,
 } from "lucide-react";
 
 export default function ProjectLayout() {
@@ -42,16 +43,14 @@ export default function ProjectLayout() {
     queryFn: () => api.get(`/projects/${id}`),
   });
 
-  // Query Project Managers for Admin quick assignment
+  // Query all active users for Admin project manager assignment (Admin can pick any active user)
   const { data: usersData } = useQuery({
     queryKey: ["admin-users-lookup"],
     queryFn: () => api.get("/users?limit=100"),
     enabled: user?.role === "admin",
   });
 
-  const projectManagers = (usersData?.data || []).filter(
-    (u) => u.isActive && u.role === "project_manager"
-  );
+  const projectManagers = (usersData?.data || []).filter((u) => u.isActive);
 
   const project = projectRes?.project || projectRes?.data;
   const isAssignedManager =
@@ -356,6 +355,20 @@ export default function ProjectLayout() {
             <Users className="h-4 w-4" />
             <span>02 // TEAM ROSTER</span>
           </NavLink>
+
+          <NavLink
+            to={`/projects/${id}/updates`}
+            className={({ isActive }) =>
+              `flex items-center gap-2 px-4 py-2.5 text-xs font-mono font-bold uppercase tracking-wider border transition-all ${
+                isActive
+                  ? "bg-[#0A0A0A] text-[#C6FF3D] border-[#0A0A0A]"
+                  : "border-transparent text-[#737373] hover:text-[#0A0A0A] hover:bg-[#F5F5F2]"
+              }`
+            }
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>03 // UPDATES (ADMIN ↔ PM)</span>
+          </NavLink>
         </div>
       </div>
 
@@ -436,7 +449,7 @@ export default function ProjectLayout() {
                   <option value="">NO ASSIGNED MANAGER</option>
                   {projectManagers.map((pm) => (
                     <option key={pm._id} value={pm._id}>
-                      {pm.name} ({pm.email})
+                      {pm.name} ({pm.email}) [{pm.role?.toUpperCase()}]
                     </option>
                   ))}
                 </select>
