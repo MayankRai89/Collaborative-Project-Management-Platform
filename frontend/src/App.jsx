@@ -9,6 +9,7 @@ import ProjectLayout from "./pages/projects/ProjectLayout";
 import ProjectTasks from "./pages/projects/ProjectTasks";
 import ProjectTeam from "./pages/projects/ProjectTeam";
 import TaskDetail from "./pages/tasks/TaskDetail";
+import MyTasks from "./pages/tasks/MyTasks";
 
 export default function App() {
   return (
@@ -20,6 +21,8 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<ProjectList />} />
+        <Route path="/tasks" element={<MyTasks />} />
+        <Route path="/my-tasks" element={<Navigate to="/tasks" replace />} />
 
         {/* NESTED PROJECT ROUTES */}
         <Route path="/projects/:id" element={<ProjectLayout />}>
