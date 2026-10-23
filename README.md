@@ -105,7 +105,8 @@ When running `npm run seed` in the backend, the following pre-configured test us
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@example.com` | `Admin@123` | Full global oversight, PM allocation, user matrix |
 | **Project Manager** | `pm@example.com` | `Manager@123` | Squad recruitment, member roles, task creation & assignment |
-| **Team Member** | `member@example.com` | `Member@123` | Assigned task updates, sprint comments |
+| **Team Member 1** | `member@example.com` | `Member@123` | Assigned task updates, sprint comments (Rahul) |
+| **Team Member 2** | `aisha@example.com` | `Member@123` | Assigned task updates, sprint comments (Aisha) |
 | **Viewer** | `viewer@example.com` | `Viewer@123` | Read-only observation of projects & sprint progress |
 
 ---
