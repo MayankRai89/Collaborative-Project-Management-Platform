@@ -27,7 +27,7 @@ const archivedGuard = (req, res) => {
   }
   return false;
 };
-
+const Comment = require("../models/CommentModel");
 // An assignee must be an ACTIVE project manager or team member OF THIS PROJECT (never a viewer)
 const validateAssignee = async (projectId, assigneeId) => {
   if (typeof assigneeId !== "string" || !mongoose.isValidObjectId(assigneeId))
@@ -163,12 +163,10 @@ exports.updateTask = async (req, res, next) => {
   try {
     const { version } = req.body;
     if (!Number.isInteger(version)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "version (integer) is required: send the version you last loaded",
-        });
+      return res.status(400).json({
+        message:
+          "version (integer) is required: send the version you last loaded",
+      });
     }
     if (archivedGuard(req, res)) return;
 
@@ -197,11 +195,9 @@ exports.updateTask = async (req, res, next) => {
     const allowed = isManager ? MANAGER_FIELDS : MEMBER_FIELDS;
     const forbidden = requested.filter((k) => !allowed.includes(k));
     if (forbidden.length) {
-      return res
-        .status(403)
-        .json({
-          message: `You are not allowed to change: ${forbidden.join(", ")}`,
-        });
+      return res.status(403).json({
+        message: `You are not allowed to change: ${forbidden.join(", ")}`,
+      });
     }
 
     // 3. Validate and translate the changes
