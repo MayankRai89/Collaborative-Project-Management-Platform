@@ -393,29 +393,37 @@ export default function TaskDetail() {
           </div>
 
           {/* POST COMMENT FORM */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (commentText.trim()) postCommentMutation.mutate(commentText.trim());
-            }}
-            className="mt-6 pt-4 border-t border-[#0A0A0A]"
-          >
-            <textarea
-              rows={3}
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Post progress update or blocker..."
-              className="w-full border border-black p-2 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
-            />
-            <button
-              type="submit"
-              disabled={postCommentMutation.isPending || !commentText.trim()}
-              className="mt-2 w-full border border-black bg-[#0A0A0A] text-white py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+          {myRole !== "viewer" ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (commentText.trim()) postCommentMutation.mutate(commentText.trim());
+              }}
+              className="mt-6 pt-4 border-t border-[#0A0A0A]"
             >
-              <Send className="h-3.5 w-3.5" />
-              <span>POST UPDATE</span>
-            </button>
-          </form>
+              <textarea
+                rows={3}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Post progress update or blocker..."
+                className="w-full border border-black p-2 text-xs font-mono outline-none focus:ring-2 focus:ring-[#C6FF3D]"
+              />
+              <button
+                type="submit"
+                disabled={postCommentMutation.isPending || !commentText.trim()}
+                className="mt-2 w-full border border-black bg-[#0A0A0A] text-white py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-[#C6FF3D] hover:text-[#0A0A0A] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Send className="h-3.5 w-3.5" />
+                <span>POST UPDATE</span>
+              </button>
+            </form>
+          ) : (
+            <div className="mt-6 pt-4 border-t border-[#0A0A0A] text-center">
+              <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider">
+                // OBSERVATION PRIVILEGES ONLY (COMMENTS LOCKED)
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
