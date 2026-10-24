@@ -10,7 +10,7 @@ const unassignTasks = (projectId, userId) =>
   );
 
 // 'project_manager' is deliberately NOT here: it can only be set through PATCH /projects/:id/manager
-const ASSIGNABLE_ROLES = ["team_member", "viewer", "project_manager"];
+const ASSIGNABLE_ROLES = ["team_member", "viewer"];
 
 const archivedGuard = (req, res) => {
   if (req.project.status === "archived") {
