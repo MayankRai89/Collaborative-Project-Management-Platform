@@ -22,7 +22,7 @@ const {
 const {
   listProjectUpdates,
   createProjectUpdate,
-} = require("../controllers/commentController");
+} = require("../controllers/CommentController");
 
 router.use(authMiddleware);
 

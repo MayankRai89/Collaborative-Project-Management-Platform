@@ -14,7 +14,7 @@ const {
 const {
   listComments,
   createComment,
-} = require("../controllers/commentController");
+} = require("../controllers/CommentController");
 
 router.use(authMiddleware);
 

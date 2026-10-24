@@ -1,8 +1,8 @@
 const router = require("express").Router();
 const authMiddleware = require("../middleware/authMiddleware");
-const loadComment = require("../middleware/commentAccess");
+const loadComment = require("../middleware/CommentAccess");
 const { loadProject } = require("../middleware/projectAccess");
-const { deleteComment } = require("../controllers/commentController");
+const { deleteComment } = require("../controllers/CommentController");
 
 router.use(authMiddleware);
 
