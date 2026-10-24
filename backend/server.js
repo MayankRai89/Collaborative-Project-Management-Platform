@@ -29,6 +29,14 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+// Normalize redundant leading slashes in incoming requests (e.g. //api/auth/login -> /api/auth/login)
+app.use((req, res, next) => {
+  if (req.url && req.url.startsWith("//")) {
+    req.url = req.url.replace(/^\/+/, "/");
+  }
+  next();
+});
+
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api", routes);
 

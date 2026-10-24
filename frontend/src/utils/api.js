@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const rawBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
 // Carries the HTTP status and the full response body.
 // For a 409 the body contains `currentTask`, which the conflict UI in F5 will use.
