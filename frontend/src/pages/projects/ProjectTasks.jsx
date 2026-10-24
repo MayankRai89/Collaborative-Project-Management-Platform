@@ -13,6 +13,7 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -89,7 +90,7 @@ export default function ProjectTasks() {
   // Preserve optimistic concurrency with version
   const updateTaskMutation = useMutation({
     mutationFn: ({ taskId, version, ...updates }) =>
-      api.patch(`/tasks/${taskId}`, { version, ...updates }),
+      api.put(`/tasks/${taskId}`, { version, ...updates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-tasks", project._id] });
       setConflictTask(null);
@@ -453,6 +454,16 @@ export default function ProjectTasks() {
                         </div>
                       )}
                     </td>
+                    <td className="p-3.5">
+                      <Link
+                        to={`/tasks/${t._id}`}
+                        className="border border-black bg-[#0A0A0A] text-[#C6FF3D] hover:bg-[#C6FF3D] hover:text-[#0A0A0A] px-2.5 py-1 text-[10px] font-mono font-bold uppercase transition-all inline-flex items-center gap-1 shadow-[2px_2px_0px_0px_#0A0A0A]"
+                        title="Direct Task Update Thread"
+                      >
+                        <MessageSquare className="h-3 w-3" />
+                        <span>ASK FOR UPDATE</span>
+                      </Link>
+                    </td>
                     <td className="p-3.5 text-right font-mono text-[10px] text-[#737373]">
                       v{t.version ?? 1}
                     </td>
@@ -597,6 +608,17 @@ export default function ProjectTasks() {
 
                             <div className="text-right text-[9px] text-[#A3A3A3] font-mono pt-1">
                               v{t.version ?? 1}
+                            </div>
+
+                            {/* TIER B: ASK FOR UPDATE / MESSAGE LINK */}
+                            <div className="pt-2 border-t border-[#E5E5E0]">
+                              <Link
+                                to={`/tasks/${t._id}`}
+                                className="flex items-center justify-center gap-1.5 w-full bg-white hover:bg-[#C6FF3D] border border-black py-1 px-2 text-[10px] font-mono font-bold uppercase transition-colors"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                Ask for Update / Message &rarr;
+                              </Link>
                             </div>
                           </div>
                         </div>

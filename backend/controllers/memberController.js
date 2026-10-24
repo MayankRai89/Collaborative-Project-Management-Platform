@@ -22,9 +22,9 @@ const archivedGuard = (req, res) => {
   return false;
 };
 
-// A user's project role can never exceed their global role
+// A user's project role can never exceed their global role (unless promoted to project_manager)
 const exceedsGlobalRole = (user, projectRole) =>
-  user.role === "viewer" && projectRole !== "viewer";
+  projectRole !== "project_manager" && user.role === "viewer" && projectRole !== "viewer";
 
 // GET /api/projects/:id/members?role=viewer   (any member, or admin)
 exports.listMembers = async (req, res, next) => {
@@ -87,6 +87,17 @@ exports.addMember = async (req, res, next) => {
     });
 
     if (role === "project_manager") {
+      if (user.role !== "admin" && user.role !== "project_manager") {
+        user.role = "project_manager";
+        await user.save();
+      }
+      const previousId = req.project.manager;
+      if (previousId && !previousId.equals(user._id)) {
+        await ProjectMember.updateOne(
+          { project: req.project._id, user: previousId },
+          { role: "team_member" },
+        );
+      }
       req.project.manager = user._id;
       await req.project.save();
     }
@@ -132,6 +143,17 @@ exports.updateMemberRole = async (req, res, next) => {
     await member.save();
 
     if (role === "project_manager") {
+      if (user.role !== "admin" && user.role !== "project_manager") {
+        user.role = "project_manager";
+        await user.save();
+      }
+      const previousId = req.project.manager;
+      if (previousId && !previousId.equals(member.user)) {
+        await ProjectMember.updateOne(
+          { project: req.project._id, user: previousId },
+          { role: "team_member" },
+        );
+      }
       req.project.manager = member.user;
       await req.project.save();
     } else if (

@@ -85,6 +85,7 @@ export default function TaskDetail() {
       ? "progress_update"
       : "general";
   const [commentCategory, setCommentCategory] = useState(defaultCategory);
+  const [commentRecipientId, setCommentRecipientId] = useState("");
 
   // Conflict state (409)
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
@@ -102,7 +103,7 @@ export default function TaskDetail() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: (payload) => api.patch(`/tasks/${id}`, payload),
+    mutationFn: (payload) => api.put(`/tasks/${id}`, payload),
     onSuccess: (resData) => {
       const updated = resData?.task || resData?.data;
       if (updated) {
@@ -132,13 +133,14 @@ export default function TaskDetail() {
     },
   });
 
-  // Post comment mutation with category
+  // Post comment mutation with category and recipient target
   const postCommentMutation = useMutation({
-    mutationFn: ({ body, category }) =>
-      api.post(`/tasks/${id}/comments`, { body, category }),
+    mutationFn: ({ body, category, recipientId }) =>
+      api.post(`/tasks/${id}/comments`, { body, category, recipientId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["task-comments", id] });
       setCommentText("");
+      setCommentRecipientId("");
     },
   });
 
@@ -406,16 +408,18 @@ export default function TaskDetail() {
         {/* RIGHT 1 COL: COMMENTS THREAD */}
         <div className="border border-[#0A0A0A] bg-white p-6 shadow-[4px_4px_0px_0px_#0A0A0A] flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between border-b border-[#0A0A0A] pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                <h3 className="font-['Bebas_Neue','Oswald'] text-2xl uppercase tracking-wide">
-                  AUDIT & COMMENTS
-                </h3>
+            <div className="flex flex-col gap-1 border-b border-[#0A0A0A] pb-3 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="bg-[#0A0A0A] text-[#C6FF3D] font-mono text-[9px] font-bold px-1.5 py-0.2 uppercase border border-black">
+                  TIER B // TASK UPDATE THREAD
+                </span>
+                <span className="font-mono text-xs font-bold text-[#737373]">
+                  [{comments.length} UPDATES]
+                </span>
               </div>
-              <span className="font-mono text-xs font-bold text-[#737373]">
-                [{comments.length}]
-              </span>
+              <h3 className="font-['Bebas_Neue','Oswald'] text-2xl uppercase tracking-wide text-[#0A0A0A]">
+                PM ↔ {task?.assignee?.name ? task.assignee.name.toUpperCase() : "UNASSIGNED SQUAD MEMBER"}
+              </h3>
             </div>
 
             {/* COMMENTS LIST */}
@@ -474,6 +478,12 @@ export default function TaskDetail() {
                               ⚠️ BLOCKER
                             </span>
                           )}
+
+                          {c.recipient && (
+                            <span className="bg-[#0A0A0A] text-[#C6FF3D] px-1.5 py-0.2 text-[8px] font-bold uppercase border border-black">
+                              &rarr; @{c.recipient.name}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2 text-[#737373]">
@@ -497,7 +507,7 @@ export default function TaskDetail() {
             </div>
           </div>
 
-          {/* POST COMMENT FORM WITH CATEGORY TABS */}
+          {/* POST COMMENT FORM WITH CATEGORY TABS & RECIPIENT */}
           {myRole !== "viewer" ? (
             <form
               onSubmit={(e) => {
@@ -506,16 +516,53 @@ export default function TaskDetail() {
                   postCommentMutation.mutate({
                     body: commentText.trim(),
                     category: commentCategory,
+                    recipientId: commentRecipientId || undefined,
                   });
                 }
               }}
               className="mt-6 pt-4 border-t border-[#0A0A0A]"
             >
-              {/* Category selector pills */}
+              {/* Quick Prompt Button for PM or Admin to ask for status */}
+              {task?.assignee && (canManage || user?.role === "admin") && (
+                <div className="mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCommentText(`@${task.assignee.name} — Please provide your status update and current progress on this task.`);
+                      setCommentCategory(user?.role === "admin" ? "admin_instruction" : "pm_directive");
+                      setCommentRecipientId(task.assignee._id || task.assignee);
+                    }}
+                    className="w-full border border-black bg-[#FAF9F5] hover:bg-[#C6FF3D] text-[#0A0A0A] p-2 text-[11px] font-mono font-bold uppercase transition-colors text-left flex items-center justify-between shadow-[2px_2px_0px_0px_#0A0A0A]"
+                  >
+                    <span>⚡ ASK @{task.assignee.name.toUpperCase()} FOR STATUS UPDATE</span>
+                    <span className="text-[9px] underline">CLICK TO PRE-FILL</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Category selector pills & recipient tag */}
               <div className="mb-2">
-                <span className="text-[10px] font-mono text-[#737373] uppercase font-bold block mb-1">
-                  UPDATE CATEGORY:
-                </span>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-mono text-[#737373] uppercase font-bold">
+                    CATEGORY:
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-mono text-[#737373] uppercase">TAG OPERATIVE:</span>
+                    <select
+                      value={commentRecipientId}
+                      onChange={(e) => setCommentRecipientId(e.target.value)}
+                      className="border border-black bg-white px-2 py-0.5 text-[10px] font-mono uppercase outline-none focus:ring-1 focus:ring-[#C6FF3D]"
+                    >
+                      <option value="">ALL SQUAD</option>
+                      {members.map((m) => (
+                        <option key={m.user?._id || m.user} value={m.user?._id || m.user}>
+                          @{m.user?.name || "Operative"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div className="flex gap-1.5 flex-wrap">
                   {user?.role === "admin" && (
                     <button
@@ -531,7 +578,7 @@ export default function TaskDetail() {
                     </button>
                   )}
 
-                  {(myRole === "project_manager" || user?.role === "admin") && (
+                  {(canManage || user?.role === "admin") && (
                     <button
                       type="button"
                       onClick={() => setCommentCategory("pm_directive")}

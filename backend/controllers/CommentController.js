@@ -201,6 +201,12 @@ exports.deleteComment = async (req, res, next) => {
         });
     }
 
+    if (req.projectRole === "viewer") {
+      return res
+        .status(403)
+        .json({ message: "Viewers have read-only access and cannot delete comments." });
+    }
+
     const isManager = ["admin", "project_manager"].includes(req.projectRole);
     const isOwnComment = req.comment.author.equals(req.user._id);
 
